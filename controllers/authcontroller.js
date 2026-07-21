@@ -1,11 +1,8 @@
 const User = require("../models/User");
-
 // Email regex - checks for standard email format (something@something.something)
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
 // Password regex - at least 8 characters, one uppercase, one lowercase, one number, one special character
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
 const register = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -47,7 +44,6 @@ const register = async (req, res) => {
         });
     }
 };
-
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -81,8 +77,21 @@ const login = async (req, res) => {
         });
     }
 };
-
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find().select("-password");
+        return res.status(200).json({
+            count: users.length,
+            users
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: "Server Error"
+        });
+    }
+};
 module.exports = {
     register,
-    login
+    login,
+    getAllUsers
 };
