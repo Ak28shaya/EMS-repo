@@ -1,22 +1,24 @@
 const express = require("express");
-const connectDB = require("./config/db");
-const authRoutes = require("./routes/authRoutes");
 const mongoose = require("mongoose");
-const cors = require("cors");
-const authController = require("./controllers/authController");
+
 const app = express();
-// Convert JSON data from requests
+
 app.use(express.json());
-// Connect to MongoDB
-connectDB();
-app.use((req, res, next) => {
-    console.log(req.method, req.url);
-    next();
-});
-// Routes
+
+const roleRoutes = require("./routes/roleroutes");
+const authRoutes = require("./routes/authroutes");
+
+app.use("/roles", roleRoutes);
 app.use("/auth", authRoutes);
-// Start Server
-const PORT = 5000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+
+app.get("/", (req, res) => {
+    res.send("EMS Backend Running");
+});
+
+mongoose.connect("mongodb://localhost:27017/EMS")
+.then(() => console.log("MongoDB Connected"))
+.catch(err => console.log(err));
+
+app.listen(5000, () => {
+    console.log("Server is running on port 5000");
 });
