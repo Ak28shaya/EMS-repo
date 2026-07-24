@@ -4,11 +4,13 @@ const mongoose = require("mongoose");
 const app = express();
 
 app.use(express.json());
-
-const roleRoutes = require("./routes/roleroutes");
-const authRoutes = require("./routes/authroutes");
-
-app.use("/roles", roleRoutes);
+// Connect to MongoDB
+connectDB();
+app.use((req, res, next) => {
+    console.log(req.method, req.url);
+    next();
+});
+// Routes
 app.use("/auth", authRoutes);
 
 app.get("/", (req, res) => {
