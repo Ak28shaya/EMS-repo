@@ -1,13 +1,13 @@
 const User = require("../models/User");
 const Role = require("../models/role");
-const ROLE_PERMISSIONS = require("../config/rolePermissions");
+const ROLE_PERMISSIONS = require("../config/rolepermissions");
 
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const register = async (req, res) => {
     try {
-        const { email, password, role, permissions } = req.body;
+        const { email, password, role } = req.body;
 
         if (!email || !password || !role) {
             return res.status(400).json({
@@ -37,17 +37,21 @@ const register = async (req, res) => {
 
         const roleName = role.trim().toLowerCase();
 
-        let roleDoc = await Role.findOne({ name: roleName });
-        if (!roleDoc) {
-            const defaultPermissions = ROLE_PERMISSIONS.hasOwnProperty(roleName)
-                ? ROLE_PERMISSIONS[roleName]
-                : (permissions || []);
-
-            roleDoc = await Role.create({
-                name: roleName,
-                permissions: defaultPermissions
+        // Validate role name against the known roles in ROLE_PERMISSIONS
+        if (!Object.prototype.hasOwnProperty.call(ROLE_PERMISSIONS, roleName)) {
+            return res.status(400).json({
+                message: `Invalid role. Must be one of: ${Object.keys(ROLE_PERMISSIONS).join(", ")}`
             });
         }
+
+        // Always keep permissions in sync with ROLE_PERMISSIONS,
+        // whether the role doc is new or already exists in the DB.
+        const roleDoc = await Role.findOneAndUpdate(
+            { name: roleName },
+            { $set: { permissions: ROLE_PERMISSIONS[roleName] } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+        console.log("Role document (synced):", roleDoc);
 
         const user = await User.create({
             name,
@@ -62,11 +66,11 @@ const register = async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                role: user.role,
-                permissions: roleDoc.permissions
+                role: user.role
             }
         });
     } catch (error) {
+        console.error("Register error:", error);
         return res.status(500).json({
             message: "Server Error"
         });
@@ -101,6 +105,7 @@ const login = async (req, res) => {
             message: "Login Successful"
         });
     } catch (error) {
+        console.error("Login error:", error);
         return res.status(500).json({
             message: "Server Error"
         });
@@ -115,6 +120,7 @@ const getAllUsers = async (req, res) => {
             users
         });
     } catch (error) {
+        console.error("getAllUsers error:", error);
         return res.status(500).json({
             message: "Server Error"
         });

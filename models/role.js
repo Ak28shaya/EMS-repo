@@ -16,4 +16,4 @@ const roleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Role", roleSchema); // creates "roles" collection
+module.exports = mongoose.model("Role", roleSchema, "roles"); // explicitly "roles" collection

@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const app = express();
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const roleRoutes = require("./routes/roleroutes");
 const authRoutes = require("./routes/authroutes");
