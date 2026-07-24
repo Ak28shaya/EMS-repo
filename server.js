@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const roleRoutes = require("./routes/roleRoutes"); // ✅ adjust filename to match yours exactly
+const departmentRoutes = require("./routes/departmentRoutes");
+const employeeRoutes = require("./routes/employeeRoutes");
 
 const app = express();
 
@@ -16,7 +18,9 @@ app.use((req, res, next) => {
 });
 
 app.use("/auth", authRoutes);
-app.use("/roles", roleRoutes);  // ✅ mount the roles routes
+app.use("/roles", roleRoutes);  
+app.use("/departments", departmentRoutes);
+app.use("/employees", employeeRoutes);
 
 app.get("/", (req, res) => {
     res.send("EMS Backend Running");
