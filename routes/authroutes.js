@@ -1,10 +1,9 @@
 const express = require("express");
 const router = express.Router();
-
 const {
-  register,
-  login,
-  getAllUsers
+    register,
+    login,
+    getAllUsers
 } = require("../controllers/authcontroller");
 
 router.post("/register", register);

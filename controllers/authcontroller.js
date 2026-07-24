@@ -1,13 +1,10 @@
 const User = require("../models/User");
 const Role = require("../models/role");
-
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
 const register = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
-
         if (!name || !email || !password || !role) {
             return res.status(400).json({
                 message: "Name, email, password, and role are required"
@@ -23,28 +20,24 @@ const register = async (req, res) => {
                 message: "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character"
             });
         }
-
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(409).json({
                 message: "User already exists"
             });
         }
-
         const roleDoc = await Role.findOne({ name: role });
         if (!roleDoc) {
             return res.status(400).json({
                 message: `Role '${role}' does not exist`
             });
         }
-
         const user = await User.create({
             name,
             email,
             password,
             role: roleDoc._id
         });
-
         return res.status(201).json({
             message: "User registered successfully",
             user: {
@@ -61,7 +54,6 @@ const register = async (req, res) => {
         });
     }
 };
-
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -96,7 +88,6 @@ const login = async (req, res) => {
         });
     }
 };
-
 const getAllUsers = async (req, res) => {
     try {
         const users = await User.find().select("-password").populate("role");
@@ -111,7 +102,6 @@ const getAllUsers = async (req, res) => {
         });
     }
 };
-
 module.exports = {
     register,
     login,

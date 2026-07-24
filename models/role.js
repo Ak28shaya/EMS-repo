@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const roleSchema = new mongoose.Schema(
   {
     name: {
@@ -15,5 +14,4 @@ const roleSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
 module.exports = mongoose.model("Role", roleSchema, "roles"); // explicitly "roles" collection
