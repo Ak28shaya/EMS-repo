@@ -1,4 +1,5 @@
 const Department = require("../models/department");
+
 // Create Department
 const createDepartment = async (req, res) => {
     try {
@@ -61,51 +62,8 @@ const getDepartmentById = async (req, res) => {
         });
     }
 };
-// Update Department
-const updateDepartment = async (req, res) => {
-    try {
-        const department = await Department.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true }
-        );
-        if (!department) {
-            return res.status(404).json({
-                message: "Department Not Found"
-            });
-        }
-        res.status(200).json({
-            message: "Department Updated",
-            department
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: error.message
-        });
-    }
-};
-// Delete Department
-const deleteDepartment = async (req, res) => {
-    try {
-        const department = await Department.findByIdAndDelete(req.params.id);
-        if (!department) {
-            return res.status(404).json({
-                message: "Department Not Found"
-            });
-        }
-        res.status(200).json({
-            message: "Department Deleted"
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: error.message
-        });
-    }
-};
 module.exports = {
     createDepartment,
     getDepartments,
-    getDepartmentById,
-    updateDepartment,
-    deleteDepartment
+    getDepartmentById
 };
