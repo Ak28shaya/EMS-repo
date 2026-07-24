@@ -1,15 +1,16 @@
 const User = require("../models/User");
-// Email regex - checks for standard email format (something@something.something)
+const Role = require("../models/role");
+
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const register = async (req, res) => {
     try {
-        const { email, password, role } = req.body;
+        const { name, email, password, role } = req.body;
 
-        if (!email || !password || !role) {
+        if (!name || !email || !password || !role) {
             return res.status(400).json({
-                message: "Email, password, and role are required"
+                message: "Name, email, password, and role are required"
             });
         }
         if (!emailRegex.test(email)) {
@@ -29,17 +30,28 @@ const register = async (req, res) => {
                 message: "User already exists"
             });
         }
+
+        const roleDoc = await Role.findOne({ name: role });
+        if (!roleDoc) {
+            return res.status(400).json({
+                message: `Role '${role}' does not exist`
+            });
+        }
+
         const user = await User.create({
             name,
             email,
-            password
+            password,
+            role: roleDoc._id
         });
 
         return res.status(201).json({
             message: "User registered successfully",
             user: {
                 id: user._id,
-                email: user.email
+                name: user.name,
+                email: user.email,
+                role: roleDoc.name
             }
         });
     } catch (error) {

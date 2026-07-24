@@ -17,10 +17,6 @@ const userSchema = new mongoose.Schema({
         select: false
     },
     role: {
-        type: String,   // just the role name, e.g. "admin", "manager"
-        required: true
-    },
-    role: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Role",
         required: true
