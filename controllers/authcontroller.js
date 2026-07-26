@@ -1,14 +1,13 @@
 const User = require("../models/User");
-// Email regex - checks for standard email format (something@something.something)
+const Role = require("../models/role");
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-// Password regex - at least 8 characters, one uppercase, one lowercase, one number, one special character
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 const register = async (req, res) => {
     try {
-        const { email, password } = req.body;
-        if (!email || !password) {
+        const { name, email, password, role } = req.body;
+        if (!name || !email || !password || !role) {
             return res.status(400).json({
-                message: "Email and password are required"
+                message: "Name, email, password, and role are required"
             });
         }
         if (!emailRegex.test(email)) {
@@ -27,18 +26,29 @@ const register = async (req, res) => {
                 message: "User already exists"
             });
         }
+        const roleDoc = await Role.findOne({ name: role });
+        if (!roleDoc) {
+            return res.status(400).json({
+                message: `Role '${role}' does not exist`
+            });
+        }
         const user = await User.create({
+            name,
             email,
-            password
+            password,
+            role: roleDoc._id
         });
         return res.status(201).json({
             message: "User registered successfully",
             user: {
                 id: user._id,
-                email: user.email
+                name: user.name,
+                email: user.email,
+                role: roleDoc.name
             }
         });
     } catch (error) {
+        console.error("Register error:", error);
         return res.status(500).json({
             message: "Server Error"
         });
@@ -57,7 +67,7 @@ const login = async (req, res) => {
                 message: "Please enter a valid email address"
             });
         }
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email }).select("+password");
         if (!user) {
             return res.status(404).json({
                 message: "Email not found"
@@ -72,6 +82,7 @@ const login = async (req, res) => {
             message: "Login Successful"
         });
     } catch (error) {
+        console.error("Login error:", error);
         return res.status(500).json({
             message: "Server Error"
         });
@@ -79,12 +90,13 @@ const login = async (req, res) => {
 };
 const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find().select("-password");
+        const users = await User.find().select("-password").populate("role");
         return res.status(200).json({
             count: users.length,
             users
         });
     } catch (error) {
+        console.error("getAllUsers error:", error);
         return res.status(500).json({
             message: "Server Error"
         });

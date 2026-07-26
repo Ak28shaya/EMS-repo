@@ -1,22 +1,30 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const authController = require("./controllers/authController");
+const roleRoutes = require("./routes/roleRoutes"); // ✅ adjust filename to match yours exactly
+const departmentRoutes = require("./routes/departmentRoutes");
+const employeeRoutes = require("./routes/employeeRoutes");
+const designationRoutes = require("./routes/designationroutes");
+
+
 const app = express();
-// Convert JSON data from requests
 app.use(express.json());
-// Connect to MongoDB
 connectDB();
 app.use((req, res, next) => {
     console.log(req.method, req.url);
     next();
 });
-
+// Routes
 app.use("/auth", authRoutes);
-// Start Server
-const PORT = 5000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.use("/roles", roleRoutes);  
+app.use("/departments", departmentRoutes);
+app.use("/employees", employeeRoutes);
+app.use("/designations", designationRoutes);
+
+app.get("/", (req, res) => {
+    res.send("EMS Backend Running");
+});
+app.listen(5000, () => {
+    console.log("Server is running on port 5000");
 });
