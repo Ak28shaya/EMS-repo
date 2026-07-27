@@ -5,10 +5,19 @@ const router = express.Router();
 const {
   createNotice,
   getNotices,
+  getNoticeById,
+  updateNotice,
+  deleteNotice,
 } = require("../controllers/noticecontroller");
 
 router.post("/", createNotice);
 
 router.get("/", getNotices);
 
-module.exports = router;    
+router.get("/:id", getNoticeById);
+
+router.put("/:id", updateNotice);
+
+router.delete("/:id", deleteNotice);
+
+module.exports = router;
