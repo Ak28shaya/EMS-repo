@@ -6,7 +6,7 @@ const roleRoutes = require("./routes/roleRoutes"); // ✅ adjust filename to mat
 const departmentRoutes = require("./routes/departmentRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
 const designationRoutes = require("./routes/designationroutes");
-
+const payrollRoutes = require("./routes/payrollRoutes");
 
 const app = express();
 app.use(express.json());
@@ -20,6 +20,7 @@ app.use("/roles", roleRoutes);
 app.use("/departments", departmentRoutes);
 app.use("/employees", employeeRoutes);
 app.use("/designations", designationRoutes);
+app.use("/payrolls", payrollRoutes);
 
 app.get("/", (req, res) => {
     res.send("EMS Backend Running");
