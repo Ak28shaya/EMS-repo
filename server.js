@@ -7,6 +7,7 @@ const roleRoutes = require("./routes/roleRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
 const designationRoutes = require("./routes/designationroutes");
+const payrollRoutes = require("./routes/payrollRoutes");
 const attendanceRoutes = require("./routes/attendanceroutes"); // Add here
 const noticeRoutes = require("./routes/noticeroutes");
 
@@ -28,6 +29,7 @@ app.use("/roles", roleRoutes);
 app.use("/departments", departmentRoutes);
 app.use("/employees", employeeRoutes);
 app.use("/designations", designationRoutes);
+app.use("/payrolls", payrollRoutes);
 app.use("/attendance", attendanceRoutes); // Add here
 app.use("/notices", noticeRoutes);
 
