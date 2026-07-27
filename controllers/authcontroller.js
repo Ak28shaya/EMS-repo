@@ -102,8 +102,134 @@ const getAllUsers = async (req, res) => {
         });
     }
 };
+
+const getUserById = async (req, res) => {
+    try {
+
+        const user = await User.findById(req.params.id)
+            .select("-password")
+            .populate("role");
+
+        if (!user) {
+            return res.status(404).json({
+                message: "User Not Found"
+            });
+        }
+
+        return res.status(200).json({
+            user
+        });
+
+    } catch (error) {
+        console.error("getUserById error:", error);
+        return res.status(500).json({
+            message: "Server Error"
+        });
+    }
+};
+
+const updateUser = async (req, res) => {
+    try {
+
+        const { name, email, role } = req.body;
+
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({
+                message: "User Not Found"
+            });
+        }
+
+        if (!name) {
+            return res.status(400).json({
+                message: "Name is required"
+            });
+        }
+
+        if (!email) {
+            return res.status(400).json({
+                message: "Email is required"
+            });
+        }
+
+        if (!role) {
+            return res.status(400).json({
+                message: "Role is required"
+            });
+        }
+
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                message: "Please enter a valid email address"
+            });
+        }
+
+        const roleDoc = await Role.findOne({ name: role });
+
+        if (!roleDoc) {
+            return res.status(400).json({
+                message: `Role '${role}' does not exist`
+            });
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            req.params.id,
+            {
+                name,
+                email,
+                role: roleDoc._id
+            },
+            {
+                new: true,
+                runValidators: true
+            }
+        ).populate("role");
+
+        return res.status(200).json({
+            message: "User Updated Successfully",
+            user: updatedUser
+        });
+
+    } catch (error) {
+        console.error("updateUser error:", error);
+        return res.status(500).json({
+            message: "Server Error"
+        });
+    }
+};
+
+const deleteUser = async (req, res) => {
+    try {
+
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({
+                message: "User Not Found"
+            });
+        }
+
+        await User.findByIdAndDelete(req.params.id);
+
+        return res.status(200).json({
+            message: "User Deleted Successfully"
+        });
+
+    } catch (error) {
+        console.error("deleteUser error:", error);
+        return res.status(500).json({
+            message: "Server Error"
+        });
+    }
+};
+
+
 module.exports = {
     register,
     login,
-    getAllUsers
+    getAllUsers,
+    getUserById,
+    updateUser,
+    deleteUser
 };

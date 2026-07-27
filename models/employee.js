@@ -44,16 +44,6 @@ const employeeSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: "Department"
     },
-    designationId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Designation",
-        default: null
-    },
-    reportingManager: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Employee",
-        default: null
-    },
     salary: {
         type: Number
     },
@@ -72,8 +62,22 @@ const employeeSchema = new mongoose.Schema(
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
-    }
-},
+    },
+    departmentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Department"
+        },
+
+        designationId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Designation"
+        },
+
+        createdBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        }
+        },
 {
     timestamps: true
 });
