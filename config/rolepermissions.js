@@ -10,7 +10,7 @@ const ROLE_PERMISSIONS = {
         "payroll",
         "notice"
     ],
-    HR: [
+    hr: [
         "dashboard",
         "department",
         "designation",

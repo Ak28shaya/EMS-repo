@@ -17,11 +17,6 @@ const departmentSchema = new mongoose.Schema(
     description: {
       type: String,
     },
-    managerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Employee",
-      default: null,
-    },
   },
   {
     timestamps: true,

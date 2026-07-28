@@ -157,16 +157,33 @@ try {
 };
 const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find().select("-password").populate("role");
+
+        console.log("========== Logged In User ==========");
+        console.log(req.user);
+
+        const users = await User.find()
+            .select("-password")
+            .populate("role");
+
+        console.log("========== Users ==========");
+        console.log(users);
+
         return res.status(200).json({
+            success: true,
             count: users.length,
             users
         });
+
     } catch (error) {
-        console.error("getAllUsers error:", error);
+
+        console.log("========== ERROR ==========");
+        console.error(error);
+
         return res.status(500).json({
-            message: "Server Error"
+            success: false,
+            message: error.message
         });
+
     }
 };
 

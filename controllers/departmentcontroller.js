@@ -20,7 +20,6 @@ const createDepartment = async (req, res) => {
         const department = await Department.create({
             departmentName,
             description,
-            managerId
         });
         res.status(201).json({
             message: "Department Created Successfully",
@@ -101,7 +100,6 @@ const updateDepartment = async (req, res) => {
             {
                 departmentName,
                 description,
-                managerId
             },
             {
                 new: true,
