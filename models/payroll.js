@@ -63,4 +63,6 @@ const payrollSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Payroll", payrollSchema);
+module.exports =
+  mongoose.models.Payroll ||
+  mongoose.model("Payroll", payrollSchema, "payrolls");

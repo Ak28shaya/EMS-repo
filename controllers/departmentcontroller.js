@@ -1,4 +1,4 @@
-const Department = require("../models/department");
+const Department = require("../models/Department");
 
 // Create Department
 const createDepartment = async (req, res) => {

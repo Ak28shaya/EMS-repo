@@ -1,4 +1,4 @@
-const Role = require("../models/role");
+const Role = require("../models/Role");
 const ROLE_PERMISSIONS = require("../config/rolepermissions");
 
 // Get All Roles

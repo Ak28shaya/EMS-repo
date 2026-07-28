@@ -1,44 +1,65 @@
 const User = require("../models/User");
-const Role = require("../models/role");
+const Role = require("../models/Role");
+
+const { encryptPassword, decryptPassword } = require("../config/crypto");
+const { generateToken } = require("../config/jwt");
+
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 const register = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
+
         if (!name || !email || !password || !role) {
             return res.status(400).json({
+                success: false,
                 message: "Name, email, password, and role are required"
             });
         }
+
         if (!emailRegex.test(email)) {
             return res.status(400).json({
+                success: false,
                 message: "Please enter a valid email address"
             });
         }
+
         if (!passwordRegex.test(password)) {
             return res.status(400).json({
+                success: false,
                 message: "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character"
             });
         }
+
         const existingUser = await User.findOne({ email });
+
         if (existingUser) {
             return res.status(409).json({
+                success: false,
                 message: "User already exists"
             });
         }
+
         const roleDoc = await Role.findOne({ name: role });
+
         if (!roleDoc) {
             return res.status(400).json({
+                success: false,
                 message: `Role '${role}' does not exist`
             });
         }
+
+        const encryptedPassword = encryptPassword(password);
+
         const user = await User.create({
             name,
             email,
-            password,
+            password: encryptedPassword,
             role: roleDoc._id
         });
+
         return res.status(201).json({
+            success: true,
             message: "User registered successfully",
             user: {
                 id: user._id,
@@ -47,43 +68,89 @@ const register = async (req, res) => {
                 role: roleDoc.name
             }
         });
+
     } catch (error) {
-        console.error("Register error:", error);
+        console.error("Register Error:", error);
+
         return res.status(500).json({
+            success: false,
             message: "Server Error"
         });
     }
 };
 const login = async (req, res) => {
     try {
+
         const { email, password } = req.body;
+
         if (!email || !password) {
             return res.status(400).json({
+                success: false,
                 message: "Email and password are required"
             });
         }
+
         if (!emailRegex.test(email)) {
             return res.status(400).json({
+                success: false,
                 message: "Please enter a valid email address"
             });
         }
-        const user = await User.findOne({ email }).select("+password");
+
+        const user = await User.findOne({ email })
+            .select("+password")
+            .populate("role");
+
         if (!user) {
             return res.status(404).json({
+                success: false,
                 message: "Email not found"
             });
         }
-        if (user.password !== password) {
+
+        let decryptedPassword;
+
+try {
+    decryptedPassword = decryptPassword(user.password);
+} catch (error) {
+    return res.status(500).json({
+        success: false,
+        message: "Password Decryption Failed"
+    });
+}
+
+        if (decryptedPassword !== password) {
             return res.status(401).json({
+                success: false,
                 message: "Incorrect Password"
             });
         }
-        return res.status(200).json({
-            message: "Login Successful"
+
+        const token = generateToken({
+            _id: user._id,
+            employeeId: user.employeeId || null,
+            email: user.email,
+            role: user.role.name
         });
+
+        return res.status(200).json({
+            success: true,
+            message: "Login Successful",
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role.name
+            }
+        });
+
     } catch (error) {
-        console.error("Login error:", error);
+
+        console.error("Login Error:", error);
+
         return res.status(500).json({
+            success: false,
             message: "Server Error"
         });
     }
@@ -223,6 +290,38 @@ const deleteUser = async (req, res) => {
         });
     }
 };
+const getUserPassword = async (req, res) => {
+    try {
+
+        const user = await User.findById(req.params.id)
+            .select("+password");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        const originalPassword = decryptPassword(user.password);
+
+        return res.status(200).json({
+            success: true,
+            email: user.email,
+            password: originalPassword
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error"
+        });
+
+    }
+};
 
 
 module.exports = {
@@ -231,5 +330,6 @@ module.exports = {
     getAllUsers,
     getUserById,
     updateUser,
-    deleteUser
+    deleteUser,
+    getUserPassword
 };

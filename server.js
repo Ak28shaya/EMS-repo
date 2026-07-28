@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 const connectDB = require("./config/db");
@@ -10,6 +12,8 @@ const designationRoutes = require("./routes/designationroutes");
 const payrollRoutes = require("./routes/payrollRoutes");
 const attendanceRoutes = require("./routes/attendanceroutes"); // Add here
 const noticeRoutes = require("./routes/noticeroutes");
+const settingsRoutes = require("./routes/settingsroutes");
+const dashboardRoutes = require("./routes/dashboardroutes");
 
 const app = express();
 
@@ -32,6 +36,8 @@ app.use("/designations", designationRoutes);
 app.use("/payrolls", payrollRoutes);
 app.use("/attendance", attendanceRoutes); // Add here
 app.use("/notices", noticeRoutes);
+app.use("/settings", settingsRoutes);
+app.use("/dashboard", dashboardRoutes);
 
 // Default Route
 app.get("/", (req, res) => {

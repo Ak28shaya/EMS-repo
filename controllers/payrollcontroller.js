@@ -1,4 +1,4 @@
-const Payroll = require("../models/payroll");
+const Payroll = require("../models/Payroll");
 
 // Create Payroll
 const createPayroll = async (req, res) => {

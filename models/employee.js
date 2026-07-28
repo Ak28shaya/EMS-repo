@@ -1,84 +1,96 @@
 const mongoose = require("mongoose");
+
 const employeeSchema = new mongoose.Schema(
-{
+  {
     employeeId: {
-        type: String,
-        required: true,
-        unique: true
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
     },
+
     firstName: {
-        type: String,
-        required: true,
-        trim: true
+      type: String,
+      required: true,
+      trim: true,
     },
+
     lastName: {
-        type: String,
-        required: true,
-        trim: true
+      type: String,
+      required: true,
+      trim: true,
     },
+
     email: {
-        type: String,
-        required: true,
-        unique: true
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
     },
+
     phone: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
+
     gender: {
-        type: String,
-        enum: ["Male", "Female", "Other"],
-        required: true
+      type: String,
+      enum: ["Male", "Female", "Other"],
+      required: true,
     },
+
     dob: {
-        type: Date
+      type: Date,
     },
+
     address: {
-        type: String
+      type: String,
     },
+
     joiningDate: {
-        type: Date,
-        default: Date.now
+      type: Date,
+      default: Date.now,
     },
+
     departmentId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Department"
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
     },
+
+    designationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Designation",
+    },
+
     salary: {
-        type: Number
+      type: Number,
     },
+
     profileImage: {
-        type: String
+      type: String,
     },
+
     employmentType: {
-        type: String,
-        enum: ["Permanent", "Contract", "Intern"]
+      type: String,
+      enum: ["Permanent", "Contract", "Intern"],
     },
+
     status: {
-        type: String,
-        enum: ["Active", "Inactive"],
-        default: "Active"
+      type: String,
+      enum: ["Active", "Inactive"],
+      default: "Active",
     },
+
     createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
-    departmentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Department"
-        },
+  },
+  {
+    timestamps: true,
+  }
+);
 
-        designationId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Designation"
-        },
-
-        createdBy: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
-        }
-        },
-{
-    timestamps: true
-});
-module.exports = mongoose.model("Employee", employeeSchema, "employees");
+module.exports =
+  mongoose.models.Employee ||
+  mongoose.model("Employee", employeeSchema, "employees");

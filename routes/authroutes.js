@@ -7,17 +7,45 @@ const {
     getAllUsers,
     getUserById,
     updateUser,
-    deleteUser
+    deleteUser,
+      getUserPassword
 } = require("../controllers/authcontroller");
 
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
+
+// Public Routes
 router.post("/register", register);
 router.post("/login", login);
 
-router.get("/", getAllUsers);
-router.get("/:id", getUserById);
+// Protected Routes
+router.get(
+    "/",
+    authMiddleware,
+    roleMiddleware("Admin"),
+    getAllUsers
+);
+router.get("/password/:id", getUserPassword);
 
-router.put("/:id", updateUser);
+router.get(
+    "/:id",
+    authMiddleware,
+    roleMiddleware("Admin"),
+    getUserById
+);
 
-router.delete("/:id", deleteUser);
+router.put(
+    "/:id",
+    authMiddleware,
+    roleMiddleware("Admin"),
+    updateUser
+);
+
+router.delete(
+    "/:id",
+    authMiddleware,
+    roleMiddleware("Admin"),
+    deleteUser
+);
 
 module.exports = router;

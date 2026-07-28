@@ -19,4 +19,6 @@ const designationSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Designation", designationSchema);
+module.exports =
+  mongoose.models.Designation ||
+  mongoose.model("Designation", designationSchema, "designations");
