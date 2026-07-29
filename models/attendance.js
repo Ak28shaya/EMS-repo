@@ -26,3 +26,4 @@ const attendanceSchema = new mongoose.Schema(
 module.exports =
   mongoose.models.Attendance ||
   mongoose.model("Attendance", attendanceSchema, "attendances");
+  

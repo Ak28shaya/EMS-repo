@@ -91,6 +91,7 @@ const employeeSchema = new mongoose.Schema(
   }
 );
 
-module.exports =
-  mongoose.models.Employee ||
-  mongoose.model("Employee", employeeSchema, "employees");
+// module.exports =
+//   mongoose.models.Employee ||
+//   mongoose.model("Employee", employeeSchema, "employees");
+  module.exports = mongoose.model("Employee", employeeSchema);

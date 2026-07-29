@@ -60,13 +60,13 @@ const getAttendance = async (req, res) => {
   try {
     const attendance = await Attendance.find().populate(
       "employeeId",
-      "employeeId firstName lastName"
+      // "employeeId firstName lastName"
     );
 
     const result = attendance.map((item) => ({
       _id: item._id,
       employeeCode: item.employeeId?.employeeId,
-      employeeName: `${item.employeeId?.firstName} ${item.employeeId?.lastName}`,
+      // employeeName: `${item.employeeId?.firstName} ${item.employeeId?.lastName}`,
       attendanceDate: item.attendanceDate,
       status: item.status,
       createdAt: item.createdAt,
