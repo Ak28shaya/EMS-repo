@@ -250,4 +250,4 @@ module.exports = {
     getEmployeeById,
     updateEmployee,
     deleteEmployee
-};
+};//employee controller

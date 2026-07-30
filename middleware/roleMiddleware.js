@@ -4,7 +4,6 @@ const roleMiddleware = (...allowedRoles) => {
 
         try {
 
-            // Check if user exists
             if (!req.user) {
                 return res.status(401).json({
                     success: false,
@@ -12,14 +11,7 @@ const roleMiddleware = (...allowedRoles) => {
                 });
             }
 
-            // Convert user role to lowercase
-            const userRole = req.user.role.toLowerCase();
-
-            // Convert allowed roles to lowercase
-            const roles = allowedRoles.map(role => role.toLowerCase());
-
-            // Check permission
-            if (!roles.includes(userRole)) {
+            if (!allowedRoles.includes(req.user.role)) {
                 return res.status(403).json({
                     success: false,
                     message: "Access Forbidden."
@@ -32,8 +24,7 @@ const roleMiddleware = (...allowedRoles) => {
 
             return res.status(500).json({
                 success: false,
-                message: "Role Verification Failed.",
-                error: error.message
+                message: "Role Verification Failed."
             });
 
         }
@@ -42,4 +33,4 @@ const roleMiddleware = (...allowedRoles) => {
 
 };
 
-module.exports = roleMiddleware;
+module.exports = roleMiddleware;    //role middleware

@@ -157,33 +157,16 @@ try {
 };
 const getAllUsers = async (req, res) => {
     try {
-
-        console.log("========== Logged In User ==========");
-        console.log(req.user);
-
-        const users = await User.find()
-            .select("-password")
-            .populate("role");
-
-        console.log("========== Users ==========");
-        console.log(users);
-
+        const users = await User.find().select("-password").populate("role");
         return res.status(200).json({
-            success: true,
             count: users.length,
             users
         });
-
     } catch (error) {
-
-        console.log("========== ERROR ==========");
-        console.error(error);
-
+        console.error("getAllUsers error:", error);
         return res.status(500).json({
-            success: false,
-            message: error.message
+            message: "Server Error"
         });
-
     }
 };
 
@@ -349,4 +332,4 @@ module.exports = {
     updateUser,
     deleteUser,
     getUserPassword
-};
+};// authcontroller.js
