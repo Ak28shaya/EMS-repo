@@ -1,11 +1,13 @@
 const User = require("../models/User");
 const Role = require("../models/Role");
-
-const { encryptPassword, decryptPassword } = require("../config/crypto");
+const bcrypt = require("bcrypt");
 const { generateToken } = require("../config/jwt");
 
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+const SALT_ROUNDS = 10;
+
 const register = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
@@ -49,12 +51,13 @@ const register = async (req, res) => {
             });
         }
 
-        const encryptedPassword = encryptPassword(password);
+        // One-way hash. There is no function to reverse this — that's the point.
+        const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
         const user = await User.create({
             name,
             email,
-            password: encryptedPassword,
+            password: hashedPassword,
             role: roleDoc._id
         });
 
@@ -78,28 +81,26 @@ const register = async (req, res) => {
         });
     }
 };
+
 const login = async (req, res) => {
     try {
+        console.log("========== LOGIN REQUEST ==========");
+        console.log("Request Body:", req.body);
 
         const { email, password } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
-                message: "Email and password are required"
-            });
-        }
-
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({
-                success: false,
-                message: "Please enter a valid email address"
+                message: "Email and Password are required"
             });
         }
 
         const user = await User.findOne({ email })
             .select("+password")
             .populate("role");
+
+        console.log("User Found:", user);
 
         if (!user) {
             return res.status(404).json({
@@ -108,18 +109,20 @@ const login = async (req, res) => {
             });
         }
 
-        let decryptedPassword;
+        if (!user.role) {
+            console.log("Role is missing for this user.");
 
-try {
-    decryptedPassword = decryptPassword(user.password);
-} catch (error) {
-    return res.status(500).json({
-        success: false,
-        message: "Password Decryption Failed"
-    });
-}
+            return res.status(500).json({
+                success: false,
+                message: "User role not found."
+            });
+        }
 
-        if (decryptedPassword !== password) {
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        console.log("Password Match:", isMatch);
+
+        if (!isMatch) {
             return res.status(401).json({
                 success: false,
                 message: "Incorrect Password"
@@ -128,10 +131,11 @@ try {
 
         const token = generateToken({
             _id: user._id,
-            employeeId: user.employeeId || null,
             email: user.email,
             role: user.role.name
         });
+
+        console.log("Token Generated Successfully");
 
         return res.status(200).json({
             success: true,
@@ -147,14 +151,16 @@ try {
 
     } catch (error) {
 
-        console.error("Login Error:", error);
+        console.error("========== LOGIN ERROR ==========");
+        console.error(error);
 
         return res.status(500).json({
             success: false,
-            message: "Server Error"
+            message: error.message
         });
     }
 };
+
 const getAllUsers = async (req, res) => {
     try {
         const users = await User.find().select("-password").populate("role");
@@ -290,11 +296,21 @@ const deleteUser = async (req, res) => {
         });
     }
 };
-const getUserPassword = async (req, res) => {
-    try {
 
-        const user = await User.findById(req.params.id)
-            .select("+password");
+// Admin can trigger a reset instead of ever viewing/recovering the original
+// password (which is impossible now anyway, since bcrypt hashes are one-way).
+const resetUserPassword = async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+
+        if (!newPassword || !passwordRegex.test(newPassword)) {
+            return res.status(400).json({
+                success: false,
+                message: "A valid new password is required (min 8 chars, upper/lower/number/special char)"
+            });
+        }
+
+        const user = await User.findById(req.params.id);
 
         if (!user) {
             return res.status(404).json({
@@ -303,26 +319,22 @@ const getUserPassword = async (req, res) => {
             });
         }
 
-        const originalPassword = decryptPassword(user.password);
+        user.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
+        await user.save();
 
         return res.status(200).json({
             success: true,
-            email: user.email,
-            password: originalPassword
+            message: "Password reset successfully"
         });
 
     } catch (error) {
-
-        console.error(error);
-
+        console.error("resetUserPassword error:", error);
         return res.status(500).json({
             success: false,
             message: "Server Error"
         });
-
     }
 };
-
 
 module.exports = {
     register,
@@ -331,5 +343,5 @@ module.exports = {
     getUserById,
     updateUser,
     deleteUser,
-    getUserPassword
-};// authcontroller.js
+    resetUserPassword
+};
