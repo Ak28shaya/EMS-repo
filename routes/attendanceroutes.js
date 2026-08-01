@@ -5,11 +5,14 @@ const router = express.Router();
 const {
   createAttendance,
   getAttendance,
+  getAttendanceSummary,
   updateAttendance,
   deleteAttendance,
 } = require("../controllers/attendancecontroller");
 
 router.post("/", createAttendance);
+
+router.get("/summary", getAttendanceSummary);
 
 router.get("/", getAttendance);
 
