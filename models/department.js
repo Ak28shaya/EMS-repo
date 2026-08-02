@@ -1,11 +1,5 @@
 const mongoose = require("mongoose");
 
-console.log("Loading Department model...");
-console.trace();
-
-console.log("Department model loaded");
-
-
 const departmentSchema = new mongoose.Schema(
   {
     departmentName: {
@@ -14,15 +8,34 @@ const departmentSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+
     description: {
       type: String,
+      required: true,
+      trim: true,
+    },
+
+    headName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    headDesignation: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    employeeCount: {
+      type: Number,
+      default: 0,
     },
   },
   {
     timestamps: true,
   }
 );
-console.log("Department models:", mongoose.modelNames());
 
 module.exports =
   mongoose.models.Department ||

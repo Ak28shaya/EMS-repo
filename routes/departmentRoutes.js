@@ -3,12 +3,13 @@ const express = require("express");
 const router = express.Router();
 
 const {
-    createDepartment,
-    getDepartments,
-    getDepartmentById,
-    updateDepartment,
-    deleteDepartment
-} = require("../controllers/departmentcontroller");
+    createEmployee,
+    getEmployees,
+    getEmployeeById,
+    updateEmployee,
+    deleteEmployee,
+    getEmployeesByDepartment
+} = require("../controllers/employeecontroller");
 
 router.post("/", createDepartment);
 
@@ -19,5 +20,7 @@ router.get("/:id", getDepartmentById);
 router.put("/:id", updateDepartment);
 
 router.delete("/:id", deleteDepartment);
+
+router.get("/department/:departmentId", getEmployeesByDepartment);
 
 module.exports = router;
