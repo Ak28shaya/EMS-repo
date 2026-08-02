@@ -3,13 +3,13 @@ const express = require("express");
 const router = express.Router();
 
 const {
-    createEmployee,
-    getEmployees,
-    getEmployeeById,
-    updateEmployee,
-    deleteEmployee,
+    createDepartment,
+    getDepartments,
+    getDepartmentById,
+    updateDepartment,
+    deleteDepartment,
     getEmployeesByDepartment
-} = require("../controllers/employeecontroller");
+} = require("../controllers/departmentcontroller");
 
 router.post("/", createDepartment);
 

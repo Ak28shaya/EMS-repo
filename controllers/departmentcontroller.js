@@ -191,10 +191,10 @@ const deleteDepartment = async (req, res) => {
 };
 
 module.exports = {
-    createEmployee,
-    getEmployees,
-    getEmployeeById,
-    updateEmployee,
-    deleteEmployee,
+    createDepartment,
+    getDepartments,
+    getDepartmentById,
+    updateDepartment,
+    deleteDepartment,
     getEmployeesByDepartment
 };
