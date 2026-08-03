@@ -57,9 +57,31 @@ const createDepartment = async (req, res) => {
 // Get All Departments
 const getDepartments = async (req, res) => {
   try {
-    const departments = await Department.find().sort({
-      createdAt: -1,
-    });
+    const departments = await Department.aggregate([
+      {
+        $lookup: {
+          from: "employees",
+          localField: "_id",
+          foreignField: "departmentId",
+          as: "employees",
+        },
+      },
+      {
+        $addFields: {
+          employeeCount: { $size: "$employees" },
+        },
+      },
+      {
+        $project: {
+          employees: 0,
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+    ]);
 
     res.status(200).json({
       count: departments.length,
