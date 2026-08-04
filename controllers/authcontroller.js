@@ -42,7 +42,8 @@ const register = async (req, res) => {
             });
         }
 
-        const roleDoc = await Role.findOne({ name: role });
+        const normalizedRole = typeof role === "string" ? role.toLowerCase() : role;
+        const roleDoc = await Role.findOne({ name: normalizedRole });
 
         if (!roleDoc) {
             return res.status(400).json({

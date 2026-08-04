@@ -1,5 +1,6 @@
 const Attendance = require("../models/attendance");
 const Employee = require("../models/employee");
+const mongoose = require("mongoose");
 
 const formatAttendanceRecord = (item) => ({
   _id: item._id,
@@ -33,7 +34,20 @@ const createAttendance = async (req, res) => {
       return res.status(400).json({ message: "Employee is required" });
     }
 
-    const employeeExists = await Employee.findById(employeeId);
+    // Support both ObjectId (_id) and legacy employeeId code strings.
+    let resolvedEmployeeId = employeeId;
+    const mongoose = require("mongoose");
+    const isObjectId = mongoose.Types.ObjectId.isValid(employeeId);
+    if (!isObjectId) {
+      // Try to find employee by their employeeId code (e.g. "EMP-1001")
+      const found = await Employee.findOne({ employeeId: employeeId });
+      if (!found) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      resolvedEmployeeId = found._id;
+    }
+
+    const employeeExists = await Employee.findById(resolvedEmployeeId);
     if (!employeeExists) {
       return res.status(404).json({ message: "Employee not found" });
     }
@@ -53,9 +67,27 @@ const createAttendance = async (req, res) => {
       });
     }
 
+    // Normalize attendanceDate to UTC midnight for consistent storage and duplicate checks
+    const dateObj = new Date(attendanceDate);
+    if (isNaN(dateObj.getTime())) {
+      return res.status(400).json({ message: "Invalid attendanceDate" });
+    }
+    const startOfDay = new Date(Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate()));
+    const nextDay = new Date(startOfDay);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+    // Prevent duplicate attendance entries for same employee + date
+    const duplicate = await Attendance.findOne({
+      employeeId: resolvedEmployeeId,
+      attendanceDate: { $gte: startOfDay, $lt: nextDay },
+    });
+    if (duplicate) {
+      return res.status(409).json({ message: "Attendance for this employee on this date already exists" });
+    }
+
     const attendance = await Attendance.create({
-      employeeId,
-      attendanceDate,
+      employeeId: resolvedEmployeeId,
+      attendanceDate: startOfDay,
       status,
       checkInTime: checkInTime || null,
       checkOutTime: checkOutTime || null,
