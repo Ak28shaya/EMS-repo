@@ -15,8 +15,13 @@ const attendanceRoutes = require("./routes/attendanceRoutes");
 const noticeRoutes = require("./routes/noticeRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const leaveRoutes = require("./routes/leaveRoutes");
+const profileRoutes = require("./routes/profileRoutes");
+
 
 const app = express();
+app.use(express.json());
+app.use(express.json());
 
 // Connect Database
 connectDB();
@@ -43,6 +48,8 @@ app.use("/attendance", attendanceRoutes);
 app.use("/notices", noticeRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/dashboard", dashboardRoutes);
+app.use("/leave", leaveRoutes);
+app.use("/profile", profileRoutes);
 
 
 // Home Route
