@@ -12,12 +12,13 @@ const settingsSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      lowercase: true,
     },
 
     companyPhone: {
       type: String,
       required: true,
-      trim: true,
+      match: /^[0-9]{10}$/,
     },
 
     companyAddress: {
@@ -26,15 +27,27 @@ const settingsSchema = new mongoose.Schema(
       trim: true,
     },
 
-    companyWebsite: {
+    city: {
       type: String,
-      default: "",
+      required: true,
       trim: true,
     },
 
-    companyLogo: {
+    state: {
       type: String,
-      default: "",
+      required: true,
+      trim: true,
+    },
+
+    country: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    adminPassword: {
+      type: String,
+      required: true,
     },
   },
   {
@@ -42,6 +55,4 @@ const settingsSchema = new mongoose.Schema(
   }
 );
 
-module.exports =
-  mongoose.models.Settings ||
-  mongoose.model("Settings", settingsSchema, "settings");
+module.exports = mongoose.model("Settings", settingsSchema);

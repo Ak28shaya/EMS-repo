@@ -44,6 +44,7 @@ app.use("/notices", noticeRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/dashboard", dashboardRoutes);
 
+
 // Home Route
 app.get("/", (req, res) => {
     res.status(200).json({

@@ -1,6 +1,8 @@
 const Settings = require("../models/Settings");
 
+// ===============================
 // Create Company Settings
+// ===============================
 const createSettings = async (req, res) => {
   try {
     const {
@@ -8,20 +10,27 @@ const createSettings = async (req, res) => {
       companyEmail,
       companyPhone,
       companyAddress,
-      companyWebsite,
-      companyLogo,
+      city,
+      state,
+      country,
+      adminPassword,
     } = req.body;
 
-    // Validation
+    // Required Validation
     if (
       !companyName ||
       !companyEmail ||
       !companyPhone ||
-      !companyAddress
+      !companyAddress ||
+      !city ||
+      !state ||
+      !country ||
+      !adminPassword
     ) {
       return res.status(400).json({
         success: false,
-        message: "Company Name, Email, Phone and Address are required.",
+        message:
+          "Company Name, Email, Phone, Address, City, State, Country and Password are required.",
       });
     }
 
@@ -41,7 +50,7 @@ const createSettings = async (req, res) => {
     if (!phoneRegex.test(companyPhone)) {
       return res.status(400).json({
         success: false,
-        message: "Company phone number must contain exactly 10 digits.",
+        message: "Phone number must contain exactly 10 digits.",
       });
     }
 
@@ -55,14 +64,15 @@ const createSettings = async (req, res) => {
       });
     }
 
-    // Create Settings
     const settings = await Settings.create({
       companyName,
       companyEmail,
       companyPhone,
       companyAddress,
-      companyWebsite,
-      companyLogo,
+      city,
+      state,
+      country,
+      adminPassword,
     });
 
     res.status(201).json({
@@ -81,7 +91,9 @@ const createSettings = async (req, res) => {
   }
 };
 
-// Get Company Settings
+// ===============================
+// Get Settings
+// ===============================
 const getSettings = async (req, res) => {
   try {
 
@@ -109,7 +121,9 @@ const getSettings = async (req, res) => {
   }
 };
 
-// Update Company Settings
+// ===============================
+// Update Settings
+// ===============================
 const updateSettings = async (req, res) => {
   try {
 
@@ -120,20 +134,26 @@ const updateSettings = async (req, res) => {
       companyEmail,
       companyPhone,
       companyAddress,
-      companyWebsite,
-      companyLogo,
+      city,
+      state,
+      country,
+      adminPassword,
     } = req.body;
 
-    // Validation
     if (
       !companyName ||
       !companyEmail ||
       !companyPhone ||
-      !companyAddress
+      !companyAddress ||
+      !city ||
+      !state ||
+      !country ||
+      !adminPassword
     ) {
       return res.status(400).json({
         success: false,
-        message: "Company Name, Email, Phone and Address are required.",
+        message:
+          "Company Name, Email, Phone, Address, City, State, Country and Password are required.",
       });
     }
 
@@ -153,7 +173,7 @@ const updateSettings = async (req, res) => {
     if (!phoneRegex.test(companyPhone)) {
       return res.status(400).json({
         success: false,
-        message: "Company phone number must contain exactly 10 digits.",
+        message: "Phone number must contain exactly 10 digits.",
       });
     }
 
@@ -164,8 +184,10 @@ const updateSettings = async (req, res) => {
         companyEmail,
         companyPhone,
         companyAddress,
-        companyWebsite,
-        companyLogo,
+        city,
+        state,
+        country,
+        adminPassword,
       },
       {
         new: true,
@@ -195,8 +217,6 @@ const updateSettings = async (req, res) => {
 
   }
 };
-
-
 
 module.exports = {
   createSettings,
