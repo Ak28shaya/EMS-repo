@@ -4,7 +4,7 @@ const express = require("express");
 const cors = require("cors");
 
 const connectDB = require("./config/db");
-
+const employeeDashboardRoutes = require("./routes/employeedashboardRoutes");
 const authRoutes = require("./routes/authRoutes");
 const roleRoutes = require("./routes/roleRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
@@ -18,10 +18,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const leaveRoutes = require("./routes/leaveRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 
-
 const app = express();
-app.use(express.json());
-app.use(express.json());
 
 // Connect Database
 connectDB();
@@ -48,9 +45,9 @@ app.use("/attendance", attendanceRoutes);
 app.use("/notices", noticeRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/dashboard", dashboardRoutes);
-app.use("/leave", leaveRoutes);
 app.use("/profile", profileRoutes);
-
+app.use("/api/leaves", leaveRoutes);
+app.use("/api/employeedashboard", employeeDashboardRoutes);
 
 // Home Route
 app.get("/", (req, res) => {

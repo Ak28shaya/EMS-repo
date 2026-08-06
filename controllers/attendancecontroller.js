@@ -1,5 +1,6 @@
 const Attendance = require("../models/attendance");
 const Employee = require("../models/employee");
+const Profile = require("../models/profile");
 const mongoose = require("mongoose");
 
 const formatAttendanceRecord = (item) => ({
@@ -76,24 +77,38 @@ const createAttendance = async (req, res) => {
     const nextDay = new Date(startOfDay);
     nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-    // Prevent duplicate attendance entries for same employee + date
+    // Prevent duplicate attendance entries for same employee + date.
+    // If a record already exists for the same employee and date, update it instead of failing.
     const duplicate = await Attendance.findOne({
       employeeId: resolvedEmployeeId,
       attendanceDate: { $gte: startOfDay, $lt: nextDay },
     });
-    if (duplicate) {
-      return res.status(409).json({ message: "Attendance for this employee on this date already exists" });
-    }
 
-    const attendance = await Attendance.create({
-      employeeId: resolvedEmployeeId,
-      attendanceDate: startOfDay,
-      status,
-      checkInTime: checkInTime || null,
-      checkOutTime: checkOutTime || null,
-      workedHours: workedHours ?? 0,
-      notes: notes || "",
-    });
+    let attendance;
+    if (duplicate) {
+      const payload = {
+        status,
+        checkInTime: checkInTime || null,
+        checkOutTime: checkOutTime || null,
+        workedHours: workedHours ?? 0,
+        notes: notes || "",
+      };
+
+      attendance = await Attendance.findByIdAndUpdate(duplicate._id, payload, {
+        new: true,
+        runValidators: true,
+      });
+    } else {
+      attendance = await Attendance.create({
+        employeeId: resolvedEmployeeId,
+        attendanceDate: startOfDay,
+        status,
+        checkInTime: checkInTime || null,
+        checkOutTime: checkOutTime || null,
+        workedHours: workedHours ?? 0,
+        notes: notes || "",
+      });
+    }
 
     res.status(201).json({
       message: "Attendance Marked Successfully",
@@ -226,10 +241,56 @@ const deleteAttendance = async (req, res) => {
   }
 };
 
+const getMyAttendance = async (req, res) => {
+  try {
+    const tokenUser = req.user || {};
+
+    // Try multiple strategies to locate the employee record for the current user:
+    // 1) token may contain an employeeId
+    // 2) there may be a Profile linked to this user (Profile.createdBy === userId) containing employeeId
+    // 3) fallback to matching employee by email in token
+    let employee = null;
+
+    if (tokenUser.employeeId) {
+      employee = await Employee.findById(tokenUser.employeeId);
+    }
+
+    if (!employee && tokenUser.userId) {
+      const profile = await Profile.findOne({ createdBy: tokenUser.userId });
+      if (profile && profile.employeeId) {
+        employee = await Employee.findOne({ employeeId: profile.employeeId });
+      }
+    }
+
+    if (!employee && tokenUser.email) {
+      employee = await Employee.findOne({ email: tokenUser.email });
+    }
+
+    if (!employee) {
+      return res.status(404).json({ message: "Employee record not found for current user" });
+    }
+
+    const attendance = await Attendance.find({ employeeId: employee._id })
+      .sort({ attendanceDate: -1 })
+      .populate({
+        path: "employeeId",
+        select: "employeeId firstName lastName departmentId",
+        populate: { path: "departmentId", select: "name" },
+      });
+
+    const result = attendance.map(formatAttendanceRecord);
+
+    res.status(200).json({ message: "My Attendance", count: result.length, attendance: result });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createAttendance,
   getAttendance,
   getAttendanceSummary,
+  getMyAttendance,
   updateAttendance,
   deleteAttendance,
 };

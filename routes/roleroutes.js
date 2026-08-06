@@ -2,6 +2,10 @@ const express = require("express");
 
 const router = express.Router();
 
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
+const ROLE_PERMISSIONS = require("../config/rolepermissions");
+
 const {
     getAllRoles,
     getRoleById,
@@ -10,14 +14,16 @@ const {
     deleteRole
 } = require("../controllers/rolecontroller");
 
-router.post("/", createRole);
+const allowed = ROLE_PERMISSIONS.getAllowedRoleVariants("role");
 
-router.get("/", getAllRoles);
+router.post("/", authMiddleware, roleMiddleware(...allowed), createRole);
 
-router.get("/:id", getRoleById);
+router.get("/", authMiddleware, roleMiddleware(...allowed), getAllRoles);
 
-router.put("/:id", updateRole);
+router.get("/:id", authMiddleware, roleMiddleware(...allowed), getRoleById);
 
-router.delete("/:id", deleteRole);
+router.put("/:id", authMiddleware, roleMiddleware(...allowed), updateRole);
+
+router.delete("/:id", authMiddleware, roleMiddleware(...allowed), deleteRole);
 
 module.exports = router;

@@ -138,7 +138,69 @@ const getEmployeeDashboard = async (req, res) => {
     });
   }
 };
+// Get dashboard for currently authenticated user (by token)
+const getCurrentEmployeeDashboard = async (req, res) => {
+  try {
+    const tokenUser = req.user || {};
+
+    // Resolve employee using token.employeeId, Profile.createdBy, or token email
+    let employee = null;
+    const Profile = require("../models/profile");
+    if (tokenUser.employeeId) {
+      employee = await Employee.findById(tokenUser.employeeId)
+        .populate("departmentId", "departmentName")
+        .populate("designationId", "designationName");
+    }
+
+    if (!employee && tokenUser.userId) {
+      const profile = await Profile.findOne({ createdBy: tokenUser.userId });
+      if (profile && profile.employeeId) {
+        employee = await Employee.findOne({ employeeId: profile.employeeId })
+          .populate("departmentId", "departmentName")
+          .populate("designationId", "designationName");
+      }
+    }
+
+    if (!employee && tokenUser.email) {
+      employee = await Employee.findOne({ email: tokenUser.email })
+        .populate("departmentId", "departmentName")
+        .populate("designationId", "designationName");
+    }
+
+    if (!employee) {
+      return res.status(404).json({ success: false, message: "Employee not found for current user" });
+    }
+
+    // Today's Attendance
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const todayAttendance = await Attendance.findOne({
+      employeeId: employee._id,
+      attendanceDate: { $gte: today, $lt: tomorrow },
+    });
+
+    const recentNotices = await Notice.find().sort({ createdAt: -1 }).limit(5).select("title description createdAt");
+
+    res.status(200).json({
+      success: true,
+      message: "Current Employee Dashboard Retrieved",
+      dashboard: {
+        employeeProfile: employee,
+        todayAttendance,
+        recentNotices,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Failed to load current employee dashboard", error: error.message });
+  }
+};
+
 module.exports = {
   getAdminDashboard,
   getEmployeeDashboard,
+  getCurrentEmployeeDashboard,
 };

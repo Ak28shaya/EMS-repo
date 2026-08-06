@@ -2,6 +2,10 @@ const express = require("express");
 
 const router = express.Router();
 
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
+const ROLE_PERMISSIONS = require("../config/rolepermissions");
+
 const {
   createNotice,
   getNotices,
@@ -10,14 +14,16 @@ const {
   deleteNotice,
 } = require("../controllers/noticecontroller");
 
-router.post("/", createNotice);
+const allowed = ROLE_PERMISSIONS.getAllowedRoleVariants("notice");
 
-router.get("/", getNotices);
+router.post("/", authMiddleware, roleMiddleware(...allowed), createNotice);
 
-router.get("/:id", getNoticeById);
+router.get("/", authMiddleware, roleMiddleware(...allowed), getNotices);
 
-router.put("/:id", updateNotice);
+router.get("/:id", authMiddleware, roleMiddleware(...allowed), getNoticeById);
 
-router.delete("/:id", deleteNotice);
+router.put("/:id", authMiddleware, roleMiddleware(...allowed), updateNotice);
+
+router.delete("/:id", authMiddleware, roleMiddleware(...allowed), deleteNotice);
 
 module.exports = router;

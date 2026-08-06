@@ -2,22 +2,32 @@ const express = require("express");
 
 const router = express.Router();
 
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
+const ROLE_PERMISSIONS = require("../config/rolepermissions");
+
 const {
   createAttendance,
   getAttendance,
   getAttendanceSummary,
+  getMyAttendance,
   updateAttendance,
   deleteAttendance,
 } = require("../controllers/attendancecontroller");
 
-router.post("/", createAttendance);
+const allowed = ROLE_PERMISSIONS.getAllowedRoleVariants("attendance");
 
-router.get("/summary", getAttendanceSummary);
+router.post("/", authMiddleware, roleMiddleware(...allowed), createAttendance);
 
-router.get("/", getAttendance);
+router.get("/summary", authMiddleware, roleMiddleware(...allowed), getAttendanceSummary);
 
-router.put("/:id", updateAttendance);
+router.get("/", authMiddleware, roleMiddleware(...allowed), getAttendance);
 
-router.delete("/:id", deleteAttendance);
+// Employee: get current user's attendance
+router.get("/me", authMiddleware, getMyAttendance);
+
+router.put("/:id", authMiddleware, roleMiddleware(...allowed), updateAttendance);
+
+router.delete("/:id", authMiddleware, roleMiddleware(...allowed), deleteAttendance);
 
 module.exports = router;
