@@ -3,6 +3,9 @@ const Department = require("../models/Department");
 const Designation = require("../models/Designation");
 const Attendance = require("../models/Attendance");
 const Notice = require("../models/Notice");
+const Payroll = require("../models/Payroll");
+const User = require("../models/User");
+const Role = require("../models/Role");
 
 // =============================
 // Admin Dashboard
@@ -14,6 +17,12 @@ const getAdminDashboard = async (req, res) => {
     const totalDepartments = await Department.countDocuments();
     const totalDesignations = await Designation.countDocuments();
     const totalNotices = await Notice.countDocuments();
+    const totalPayrolls = await Payroll.countDocuments();
+
+    const managerRole = await Role.findOne({ name: /manager/i });
+    const totalManagers = managerRole
+      ? await User.countDocuments({ role: managerRole._id })
+      : 0;
 
     // Today's Date
     const today = new Date();
@@ -58,6 +67,8 @@ const getAdminDashboard = async (req, res) => {
         totalDepartments,
         totalDesignations,
         totalNotices,
+        totalPayrolls,
+        totalManagers,
         presentToday,
         absentToday,
         leaveToday,
