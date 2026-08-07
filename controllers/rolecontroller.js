@@ -47,7 +47,7 @@ const getRoleById = async (req, res) => {
 const createRole = async (req, res) => {
     try {
 
-        const { name } = req.body;
+        const { name, permissions } = req.body;
 
         if (!name) {
             return res.status(400).json({
@@ -65,17 +65,20 @@ const createRole = async (req, res) => {
             });
         }
 
-        const permissions = ROLE_PERMISSIONS[name.toLowerCase()];
+        const defaultPermissions = ROLE_PERMISSIONS[name.toLowerCase()];
+        const finalPermissions = Array.isArray(permissions) && permissions.length > 0
+            ? permissions.filter((perm) => typeof perm === 'string' && perm.trim())
+            : defaultPermissions;
 
-        if (!permissions) {
+        if (!defaultPermissions && finalPermissions.length === 0) {
             return res.status(400).json({
-                message: "Invalid Role Name"
+                message: "Invalid Role Name or empty permissions"
             });
         }
 
         const role = await Role.create({
             name: name.toLowerCase(),
-            permissions
+            permissions: finalPermissions
         });
 
         res.status(201).json({
@@ -94,50 +97,49 @@ const createRole = async (req, res) => {
 const updateRole = async (req, res) => {
     try {
 
-        const { name } = req.body;
+      const { name, permissions } = req.body;
 
-        const role = await Role.findById(req.params.id);
+      const role = await Role.findById(req.params.id);
 
-        if (!role) {
-            return res.status(404).json({
-                message: "Role Not Found"
-            });
-        }
+      if (!role) {
+          return res.status(404).json({
+              message: "Role Not Found"
+          });
+      }
 
-        if (!name) {
-            return res.status(400).json({
-                message: "Role Name is required"
-            });
-        }
+      if (!name) {
+          return res.status(400).json({
+              message: "Role Name is required"
+          });
+      }
 
-        const existingRole = await Role.findOne({
-            name: name.toLowerCase(),
-            _id: { $ne: req.params.id }
-        });
+      const existingRole = await Role.findOne({
+          name: name.toLowerCase(),
+          _id: { $ne: req.params.id }
+      });
 
-        if (existingRole) {
-            return res.status(409).json({
-                message: "Role already exists"
-            });
-        }
+      if (existingRole) {
+          return res.status(409).json({
+              message: "Role already exists"
+          });
+      }
 
-        const permissions = ROLE_PERMISSIONS[name.toLowerCase()];
+      const defaultPermissions = ROLE_PERMISSIONS[name.toLowerCase()];
+      const finalPermissions = Array.isArray(permissions) && permissions.length > 0
+          ? permissions.filter((perm) => typeof perm === 'string' && perm.trim())
+          : (defaultPermissions || role.permissions || []);
 
-        if (!permissions) {
-            return res.status(400).json({
-                message: "Invalid Role Name"
-            });
-        }
+      if (!defaultPermissions && finalPermissions.length === 0) {
+          return res.status(400).json({
+              message: "Invalid Role Name or empty permissions"
+          });
+      }
 
-        const updatedRole = await Role.findByIdAndUpdate(
-            req.params.id,
-            {
-                name: name.toLowerCase(),
-                permissions
-            },
-            {
-                new: true,
-                runValidators: true
+      const updatedRole = await Role.findByIdAndUpdate(
+          req.params.id,
+          {
+              name: name.toLowerCase(),
+              permissions: finalPermissions
             }
         );
 
