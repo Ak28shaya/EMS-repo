@@ -1,5 +1,10 @@
 const Department = require("../models/Department");
 const Employee = require("../models/Employee");
+const Designation = require("../models/Designation");
+const Attendance = require("../models/Attendance");
+const Payroll = require("../models/Payroll");
+const Profile = require("../models/profile");
+const User = require("../models/User");
 
 
 // Create Department
@@ -200,7 +205,19 @@ const deleteDepartment = async (req, res) => {
       });
     }
 
-    await Department.findByIdAndDelete(req.params.id);
+    const employees = await Employee.find({ departmentId: department._id });
+    const employeeIds = employees.map((employee) => employee._id);
+    const employeeCodeIds = employees.map((employee) => employee.employeeId).filter(Boolean);
+
+    await Promise.all([
+      Attendance.deleteMany({ employeeId: { $in: employeeIds } }),
+      Payroll.deleteMany({ employeeId: { $in: employeeIds } }),
+      Profile.deleteMany({ employeeId: { $in: employeeCodeIds } }),
+      User.deleteMany({ email: { $in: employees.map((e) => e.email).filter(Boolean) } }),
+      Employee.deleteMany({ departmentId: department._id }),
+      Designation.deleteMany({ departmentId: department._id }),
+      Department.findByIdAndDelete(req.params.id),
+    ]);
 
     res.status(200).json({
       message: "Department Deleted Successfully",

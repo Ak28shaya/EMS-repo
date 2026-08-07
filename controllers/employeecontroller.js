@@ -1,4 +1,8 @@
 const Employee = require("../models/Employee");
+const Attendance = require("../models/Attendance");
+const Payroll = require("../models/Payroll");
+const Profile = require("../models/Profile");
+const User = require("../models/User");
 
 // Create Employee
 const createEmployee = async (req, res) => {
@@ -231,7 +235,15 @@ const deleteEmployee = async (req, res) => {
             });
         }
 
-        await Employee.findByIdAndDelete(req.params.id);
+        const employeeIdCode = employee.employeeId;
+
+        await Promise.all([
+            Attendance.deleteMany({ employeeId: employee._id }),
+            Payroll.deleteMany({ employeeId: employee._id }),
+            Profile.deleteMany({ employeeId: employeeIdCode }),
+            User.deleteMany({ email: employee.email }),
+            Employee.findByIdAndDelete(req.params.id),
+        ]);
 
         res.status(200).json({
             message: "Employee Deleted Successfully"

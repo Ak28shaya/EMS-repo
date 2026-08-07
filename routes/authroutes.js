@@ -8,22 +8,27 @@ const {
     getUserById,
     updateUser,
     deleteUser,
-    resetUserPassword
+    resetUserPassword,
+    getCurrentUser
 } = require("../controllers/authcontroller");
 
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
+const ROLE_PERMISSIONS = require("../config/rolepermissions");
+
+const allowedRoleAccess = ROLE_PERMISSIONS.getAllowedRoleVariants("role");
 
 router.post("/register", register);
 router.post("/login", login);
+router.get("/me", authMiddleware, getCurrentUser);
 
-router.get("/", authMiddleware, roleMiddleware("Admin"), getAllUsers);
+router.get("/", authMiddleware, roleMiddleware(...allowedRoleAccess), getAllUsers);
 
-router.get("/:id", authMiddleware, roleMiddleware("Admin"), getUserById);
+router.get("/:id", authMiddleware, roleMiddleware(...allowedRoleAccess), getUserById);
 
-router.put("/:id", authMiddleware, roleMiddleware("Admin"), updateUser);
+router.put("/:id", authMiddleware, roleMiddleware(...allowedRoleAccess), updateUser);
 
-router.delete("/:id", authMiddleware, roleMiddleware("Admin"), deleteUser);
+router.delete("/:id", authMiddleware, roleMiddleware(...allowedRoleAccess), deleteUser);
 
 router.put(
     "/:id/reset-password",

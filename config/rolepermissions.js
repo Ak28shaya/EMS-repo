@@ -56,3 +56,8 @@ module.exports.getAllowedRoleVariants = function (permission) {
     });
     return Array.from(variants);
 };
+
+// Helper to compute canonical roles for a given permission
+module.exports.getRolesForPermission = function (permission) {
+    return Object.keys(ROLE_PERMISSIONS).filter((r) => Array.isArray(ROLE_PERMISSIONS[r]) && ROLE_PERMISSIONS[r].includes(permission));
+};

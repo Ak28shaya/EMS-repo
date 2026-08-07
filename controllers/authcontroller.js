@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Role = require("../models/Role");
+const Employee = require("../models/Employee");
 const bcrypt = require("bcrypt");
 const { generateToken } = require("../config/jwt");
 
@@ -7,6 +8,71 @@ const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const SALT_ROUNDS = 10;
+
+const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const syncEmployeePermissions = async ({ oldEmail, newEmail, roleName, permissions }) => {
+    const emailToFind = (oldEmail || newEmail || "").trim();
+    if (!emailToFind) return;
+
+    const update = {
+        permissions: Array.isArray(permissions) ? permissions : [],
+    };
+
+    if (newEmail) {
+        update.email = newEmail.toLowerCase();
+    }
+
+    if (roleName) {
+        update.role = typeof roleName === "string" ? roleName.toLowerCase() : roleName;
+    }
+
+    await Employee.findOneAndUpdate(
+        { email: { $regex: new RegExp(`^${escapeRegExp(emailToFind)}$`, "i") } },
+        update,
+        { new: true }
+    );
+};
+
+const getCurrentUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).populate("role");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        const employeeRecord = await Employee.findOne({
+            email: { $regex: new RegExp(`^${escapeRegExp(user.email)}$`, "i") }
+        });
+
+        const effectivePermissions = Array.isArray(user.permissions)
+            ? user.permissions
+            : Array.isArray(employeeRecord?.permissions)
+                ? employeeRecord.permissions
+                : (Array.isArray(user.role?.permissions) ? user.role.permissions : []);
+
+        return res.status(200).json({
+            success: true,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role.name,
+                permissions: effectivePermissions
+            }
+        });
+    } catch (error) {
+        console.error("getCurrentUser error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error"
+        });
+    }
+};
 
 const register = async (req, res) => {
     try {
@@ -55,11 +121,19 @@ const register = async (req, res) => {
         // One-way hash. There is no function to reverse this — that's the point.
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
+        const defaultPermissions = roleDoc.permissions || [];
         const user = await User.create({
             name,
             email,
             password: hashedPassword,
-            role: roleDoc._id
+            role: roleDoc._id,
+            permissions: defaultPermissions
+        });
+
+        await syncEmployeePermissions({
+            newEmail: email,
+            roleName: roleDoc.name,
+            permissions: defaultPermissions
         });
 
         return res.status(201).json({
@@ -69,7 +143,8 @@ const register = async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                role: roleDoc.name
+                role: roleDoc.name,
+                permissions: defaultPermissions
             }
         });
 
@@ -97,7 +172,7 @@ const login = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email })
+        const user = await User.findOne({ email: { $regex: new RegExp(`^${escapeRegExp(email.trim())}$`, "i") } })
             .select("+password")
             .populate("role");
 
@@ -130,6 +205,14 @@ const login = async (req, res) => {
             });
         }
 
+        const employeeRecord = await Employee.findOne({ email: { $regex: new RegExp(`^${escapeRegExp(user.email)}$`, "i") } });
+
+        const effectivePermissions = Array.isArray(user.permissions)
+            ? user.permissions
+            : Array.isArray(employeeRecord?.permissions)
+                ? employeeRecord.permissions
+                : (Array.isArray(user.role?.permissions) ? user.role.permissions : []);
+
         const token = generateToken({
             _id: user._id,
             email: user.email,
@@ -146,7 +229,8 @@ const login = async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                role: user.role.name
+                role: user.role.name,
+                permissions: effectivePermissions
             }
         });
 
@@ -164,7 +248,17 @@ const login = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find().select("-password").populate("role");
+        const q = req.query.q || "";
+        const query = q
+            ? {
+                $or: [
+                    { name: { $regex: q, $options: "i" } },
+                    { email: { $regex: q, $options: "i" } }
+                ]
+            }
+            : {};
+
+        const users = await User.find(query).select("-password").populate("role");
         return res.status(200).json({
             count: users.length,
             users
@@ -239,7 +333,8 @@ const updateUser = async (req, res) => {
             });
         }
 
-        const roleDoc = await Role.findOne({ name: role });
+        const normalizedRole = typeof role === "string" ? role.toLowerCase() : role;
+        const roleDoc = await Role.findOne({ name: normalizedRole });
 
         if (!roleDoc) {
             return res.status(400).json({
@@ -247,18 +342,30 @@ const updateUser = async (req, res) => {
             });
         }
 
+        const updatedPermissions = Array.isArray(req.body.permissions)
+            ? req.body.permissions
+            : roleDoc.permissions || [];
+
         const updatedUser = await User.findByIdAndUpdate(
             req.params.id,
             {
                 name,
                 email,
-                role: roleDoc._id
+                role: roleDoc._id,
+                permissions: updatedPermissions
             },
             {
                 new: true,
                 runValidators: true
             }
         ).populate("role");
+
+        await syncEmployeePermissions({
+            oldEmail: user.email,
+            newEmail: email,
+            roleName: roleDoc.name,
+            permissions: updatedPermissions
+        });
 
         return res.status(200).json({
             message: "User Updated Successfully",
@@ -340,6 +447,7 @@ const resetUserPassword = async (req, res) => {
 module.exports = {
     register,
     login,
+    getCurrentUser,
     getAllUsers,
     getUserById,
     updateUser,

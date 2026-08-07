@@ -81,6 +81,17 @@ const employeeSchema = new mongoose.Schema(
       default: "Active",
     },
 
+    role: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+
+    permissions: {
+      type: [String],
+      default: []
+    },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
