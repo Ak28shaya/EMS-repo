@@ -1,10 +1,5 @@
 const express = require("express");
-
 const router = express.Router();
-
-const authMiddleware = require("../middleware/authMiddleware");
-const roleMiddleware = require("../middleware/roleMiddleware");
-const ROLE_PERMISSIONS = require("../config/rolepermissions");
 
 const {
   createDepartment,
@@ -12,21 +7,16 @@ const {
   getDepartmentById,
   updateDepartment,
   deleteDepartment,
-  getEmployeesByDepartment,
-} = require("../controllers/departmentcontroller");
+} = require("../controllers/departmentController");
 
-const allowed = ROLE_PERMISSIONS.getAllowedRoleVariants("department");
+router.post("/", createDepartment);
 
-router.post("/", authMiddleware, roleMiddleware(...allowed), createDepartment);
+router.get("/", getDepartments);
 
-router.get("/", authMiddleware, roleMiddleware(...allowed), getDepartments);
+router.get("/:id", getDepartmentById);
 
-router.get("/department/:departmentId", authMiddleware, roleMiddleware(...allowed), getEmployeesByDepartment);
+router.put("/:id", updateDepartment);
 
-router.get("/:id", authMiddleware, roleMiddleware(...allowed), getDepartmentById);
-
-router.put("/:id", authMiddleware, roleMiddleware(...allowed), updateDepartment);
-
-router.delete("/:id", authMiddleware, roleMiddleware(...allowed), deleteDepartment);
+router.delete("/:id", deleteDepartment);
 
 module.exports = router;

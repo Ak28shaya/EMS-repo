@@ -1,42 +1,27 @@
 const express = require("express");
-
 const router = express.Router();
-
-const authMiddleware = require("../middleware/authMiddleware");
-const roleMiddleware = require("../middleware/roleMiddleware");
-const ROLE_PERMISSIONS = require("../config/rolepermissions");
 
 const {
   createProfile,
-  getAllProfiles,
-  getMyProfile,
+  getProfiles,
   getProfileByEmployeeId,
-  updateMyProfile,
   updateProfile,
   deleteProfile,
-} = require("../controllers/profileController");
-
-const allowed = ROLE_PERMISSIONS.getAllowedRoleVariants("profile");
+} = require("../controllers/profilecontroller");
 
 // Create Profile
-router.post("/", authMiddleware, roleMiddleware(...allowed), createProfile);
+router.post("/", createProfile);
 
 // Get All Profiles
-router.get("/", authMiddleware, roleMiddleware(...allowed), getAllProfiles);
-
-// Get current authenticated user's profile
-router.get("/me", authMiddleware, roleMiddleware(...allowed), getMyProfile);
+router.get("/", getProfiles);
 
 // Get Profile By Employee ID
-router.get("/:employeeId", authMiddleware, roleMiddleware(...allowed), getProfileByEmployeeId);
-
-// Update current authenticated user's profile
-router.put("/me", authMiddleware, roleMiddleware(...allowed), updateMyProfile);
+router.get("/:employeeId", getProfileByEmployeeId);
 
 // Update Profile
-router.put("/:employeeId", authMiddleware, roleMiddleware(...allowed), updateProfile);
+router.put("/:employeeId", updateProfile);
 
 // Delete Profile
-router.delete("/:employeeId", authMiddleware, roleMiddleware(...allowed), deleteProfile);
+router.delete("/:employeeId", deleteProfile);
 
 module.exports = router;

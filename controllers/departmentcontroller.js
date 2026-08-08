@@ -1,11 +1,4 @@
 const Department = require("../models/Department");
-const Employee = require("../models/Employee");
-const Designation = require("../models/Designation");
-const Attendance = require("../models/Attendance");
-const Payroll = require("../models/Payroll");
-const Profile = require("../models/profile");
-const User = require("../models/User");
-
 
 // Create Department
 const createDepartment = async (req, res) => {
@@ -30,9 +23,7 @@ const createDepartment = async (req, res) => {
       });
     }
 
-    const existingDepartment = await Department.findOne({
-      departmentName,
-    });
+    const existingDepartment = await Department.findOne({ departmentName });
 
     if (existingDepartment) {
       return res.status(409).json({
@@ -62,31 +53,7 @@ const createDepartment = async (req, res) => {
 // Get All Departments
 const getDepartments = async (req, res) => {
   try {
-    const departments = await Department.aggregate([
-      {
-        $lookup: {
-          from: "employees",
-          localField: "_id",
-          foreignField: "departmentId",
-          as: "employees",
-        },
-      },
-      {
-        $addFields: {
-          employeeCount: { $size: "$employees" },
-        },
-      },
-      {
-        $project: {
-          employees: 0,
-        },
-      },
-      {
-        $sort: {
-          createdAt: -1,
-        },
-      },
-    ]);
+    const departments = await Department.find().sort({ createdAt: -1 });
 
     res.status(200).json({
       count: departments.length,
@@ -118,24 +85,6 @@ const getDepartmentById = async (req, res) => {
       message: error.message,
     });
   }
-};
-// Get Employees By Department
-const getEmployeesByDepartment = async (req, res) => {
-    try {
-        const employees = await Employee.find({
-            departmentId: req.params.departmentId
-        }).populate("departmentId", "departmentName");
-
-        res.status(200).json({
-            count: employees.length,
-            employees
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            message: error.message
-        });
-    }
 };
 
 // Update Department
@@ -205,19 +154,7 @@ const deleteDepartment = async (req, res) => {
       });
     }
 
-    const employees = await Employee.find({ departmentId: department._id });
-    const employeeIds = employees.map((employee) => employee._id);
-    const employeeCodeIds = employees.map((employee) => employee.employeeId).filter(Boolean);
-
-    await Promise.all([
-      Attendance.deleteMany({ employeeId: { $in: employeeIds } }),
-      Payroll.deleteMany({ employeeId: { $in: employeeIds } }),
-      Profile.deleteMany({ employeeId: { $in: employeeCodeIds } }),
-      User.deleteMany({ email: { $in: employees.map((e) => e.email).filter(Boolean) } }),
-      Employee.deleteMany({ departmentId: department._id }),
-      Designation.deleteMany({ departmentId: department._id }),
-      Department.findByIdAndDelete(req.params.id),
-    ]);
+    await Department.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       message: "Department Deleted Successfully",
@@ -233,7 +170,6 @@ module.exports = {
   createDepartment,
   getDepartments,
   getDepartmentById,
-  getEmployeesByDepartment,
   updateDepartment,
   deleteDepartment,
 };

@@ -1,24 +1,10 @@
-const Attendance = require("../models/attendance");
-const Employee = require("../models/employee");
-const Profile = require("../models/profile");
+const Attendance = require("../models/Attendance");
+const Employee = require("../models/Employee");
 const mongoose = require("mongoose");
 
-const formatAttendanceRecord = (item) => ({
-  _id: item._id,
-  employeeCode: item.employeeId?.employeeId || "N/A",
-  employeeName: item.employeeId
-    ? `${item.employeeId.firstName || ""} ${item.employeeId.lastName || ""}`.trim()
-    : "Unknown",
-  departmentName: item.employeeId?.departmentId?.name || "Unknown",
-  attendanceDate: item.attendanceDate,
-  status: item.status,
-  checkInTime: item.checkInTime || null,
-  checkOutTime: item.checkOutTime || null,
-  workedHours: item.workedHours ?? 0,
-  notes: item.notes || "",
-  createdAt: item.createdAt,
-});
-
+// ==========================================
+// Create Attendance
+// ==========================================
 const createAttendance = async (req, res) => {
   try {
     const {
@@ -31,266 +17,412 @@ const createAttendance = async (req, res) => {
       notes,
     } = req.body;
 
+    // Required validation
     if (!employeeId) {
-      return res.status(400).json({ message: "Employee is required" });
-    }
-
-    // Support both ObjectId (_id) and legacy employeeId code strings.
-    let resolvedEmployeeId = employeeId;
-    const mongoose = require("mongoose");
-    const isObjectId = mongoose.Types.ObjectId.isValid(employeeId);
-    if (!isObjectId) {
-      // Try to find employee by their employeeId code (e.g. "EMP-1001")
-      const found = await Employee.findOne({ employeeId: employeeId });
-      if (!found) {
-        return res.status(404).json({ message: "Employee not found" });
-      }
-      resolvedEmployeeId = found._id;
-    }
-
-    const employeeExists = await Employee.findById(resolvedEmployeeId);
-    if (!employeeExists) {
-      return res.status(404).json({ message: "Employee not found" });
+      return res.status(400).json({
+        success: false,
+        message: "Employee ID is required",
+      });
     }
 
     if (!attendanceDate) {
-      return res.status(400).json({ message: "Attendance Date is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Attendance Date is required",
+      });
     }
 
     if (!status) {
-      return res.status(400).json({ message: "Attendance Status is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Attendance Status is required",
+      });
     }
 
-    const validStatus = ["Present", "Absent", "Leave", "Half Day"];
+    // Validate status
+    const validStatus = [
+      "Present",
+      "Absent",
+      "Leave",
+      "Half Day",
+    ];
+
     if (!validStatus.includes(status)) {
       return res.status(400).json({
-        message: "Invalid Attendance Status. Status must be Present, Absent, Leave, or Half Day.",
+        success: false,
+        message: "Invalid Attendance Status",
       });
     }
 
-    // Normalize attendanceDate to UTC midnight for consistent storage and duplicate checks
-    const dateObj = new Date(attendanceDate);
-    if (isNaN(dateObj.getTime())) {
-      return res.status(400).json({ message: "Invalid attendanceDate" });
-    }
-    const startOfDay = new Date(Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate()));
-    const nextDay = new Date(startOfDay);
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    // Find employee using ObjectId or Employee ID
+    let employee;
 
-    // Prevent duplicate attendance entries for same employee + date.
-    // If a record already exists for the same employee and date, update it instead of failing.
-    const duplicate = await Attendance.findOne({
-      employeeId: resolvedEmployeeId,
-      attendanceDate: { $gte: startOfDay, $lt: nextDay },
+    if (mongoose.Types.ObjectId.isValid(employeeId)) {
+      employee = await Employee.findById(employeeId);
+    }
+
+    if (!employee) {
+      employee = await Employee.findOne({
+        employeeId: employeeId,
+      });
+    }
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee Not Found",
+      });
+    }
+
+    // Check duplicate attendance for same employee and date
+    const startOfDay = new Date(attendanceDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(attendanceDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const existingAttendance = await Attendance.findOne({
+      employeeId: employee._id,
+      attendanceDate: {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      },
     });
 
-    let attendance;
-    if (duplicate) {
-      const payload = {
-        status,
-        checkInTime: checkInTime || null,
-        checkOutTime: checkOutTime || null,
-        workedHours: workedHours ?? 0,
-        notes: notes || "",
-      };
-
-      attendance = await Attendance.findByIdAndUpdate(duplicate._id, payload, {
-        new: true,
-        runValidators: true,
-      });
-    } else {
-      attendance = await Attendance.create({
-        employeeId: resolvedEmployeeId,
-        attendanceDate: startOfDay,
-        status,
-        checkInTime: checkInTime || null,
-        checkOutTime: checkOutTime || null,
-        workedHours: workedHours ?? 0,
-        notes: notes || "",
+    if (existingAttendance) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Attendance already exists for this employee on this date",
       });
     }
 
-    res.status(201).json({
-      message: "Attendance Marked Successfully",
-      attendance: formatAttendanceRecord(await attendance.populate({ path: "employeeId", populate: { path: "departmentId", select: "name" } })),
+    // Create attendance
+    const attendance = await Attendance.create({
+      employeeId: employee._id,
+      attendanceDate,
+      status,
+      checkInTime: checkInTime || null,
+      checkOutTime: checkOutTime || null,
+      workedHours: workedHours || 0,
+      notes: notes || "",
+    });
+
+    // Populate employee details
+    const populatedAttendance =
+      await Attendance.findById(attendance._id).populate(
+        "employeeId",
+        "employeeId firstName lastName email"
+      );
+
+    return res.status(201).json({
+      success: true,
+      message: "Attendance Created Successfully",
+      attendance: populatedAttendance,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Create Attendance Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+// ==========================================
+// Get All Attendance
+// ==========================================
 const getAttendance = async (req, res) => {
   try {
     const attendance = await Attendance.find()
-      .sort({ attendanceDate: -1 })
-      .populate({
-        path: "employeeId",
-        select: "employeeId firstName lastName departmentId",
-        populate: { path: "departmentId", select: "name" },
+      .populate(
+        "employeeId",
+        "employeeId firstName lastName email"
+      )
+      .sort({
+        attendanceDate: -1,
       });
 
-    const result = attendance.map(formatAttendanceRecord);
-
-    res.status(200).json({
-      message: "Attendance List",
-      count: result.length,
-      attendance: result,
+    return res.status(200).json({
+      success: true,
+      count: attendance.length,
+      attendance,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Get Attendance Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-const getAttendanceSummary = async (req, res) => {
+// ==========================================
+// Get Attendance for current authenticated employee
+// ==========================================
+const getMyAttendance = async (req, res) => {
   try {
-    const attendance = await Attendance.find()
-      .sort({ attendanceDate: 1 })
-      .populate({
-        path: "employeeId",
-        select: "employeeId firstName lastName departmentId",
-        populate: { path: "departmentId", select: "name" },
+    const tokenEmployeeId = req.user?.employeeId;
+    if (!tokenEmployeeId) {
+      return res.status(400).json({
+        success: false,
+        message: "Employee information not available for current user",
       });
-
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const monthlyStats = [];
-    const departmentStats = [];
-    const monthlyMap = new Map();
-    const departmentMap = new Map();
-
-    attendance.forEach((item) => {
-      const date = new Date(item.attendanceDate);
-      const monthName = monthNames[date.getMonth()];
-      const entry = monthlyMap.get(monthName) || { name: monthName, Present: 0, Absent: 0, Leave: 0, "Half Day": 0 };
-      entry[item.status] = (entry[item.status] || 0) + 1;
-      monthlyMap.set(monthName, entry);
-
-      const departmentName = item.employeeId?.departmentId?.name || "Unknown";
-      const departmentEntry = departmentMap.get(departmentName) || { name: departmentName, Present: 0, Absent: 0, Leave: 0, "Half Day": 0 };
-      departmentEntry[item.status] = (departmentEntry[item.status] || 0) + 1;
-      departmentMap.set(departmentName, departmentEntry);
-    });
-
-    monthlyMap.forEach((value) => monthlyStats.push(value));
-    departmentMap.forEach((value) => departmentStats.push(value));
-
-    res.status(200).json({
-      message: "Attendance Summary",
-      monthlyStats,
-      departmentStats,
-      totalRecords: attendance.length,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-const updateAttendance = async (req, res) => {
-  try {
-    const { employeeId, attendanceDate, status, checkInTime, checkOutTime, workedHours, notes } = req.body;
-
-    const attendance = await Attendance.findById(req.params.id);
-
-    if (!attendance) {
-      return res.status(404).json({ message: "Attendance Record Not Found" });
     }
 
+    let employee;
+    if (mongoose.Types.ObjectId.isValid(tokenEmployeeId)) {
+      employee = await Employee.findById(tokenEmployeeId);
+    }
+
+    if (!employee) {
+      employee = await Employee.findOne({ employeeId: tokenEmployeeId });
+    }
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee Not Found",
+      });
+    }
+
+    const attendance = await Attendance.find({ employeeId: employee._id })
+      .populate("employeeId", "employeeId firstName lastName email")
+      .sort({ attendanceDate: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: attendance.length,
+      attendance,
+    });
+  } catch (error) {
+    console.error("Get My Attendance Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ==========================================
+// Get Attendance By ID
+// ==========================================
+const getAttendanceById = async (req, res) => {
+  try {
+    const attendance = await Attendance.findById(
+      req.params.id
+    ).populate(
+      "employeeId",
+      "employeeId firstName lastName email"
+    );
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "Attendance Not Found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      attendance,
+    });
+  } catch (error) {
+    console.error("Get Attendance By ID Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ==========================================
+// Update Attendance
+// ==========================================
+const updateAttendance = async (req, res) => {
+  try {
+    const {
+      employeeId,
+      attendanceDate,
+      status,
+      checkInTime,
+      checkOutTime,
+      workedHours,
+      notes,
+    } = req.body;
+
+    const attendance = await Attendance.findById(
+      req.params.id
+    );
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "Attendance Not Found",
+      });
+    }
+
+    // Validate status if provided
+    if (
+      status &&
+      !["Present", "Absent", "Leave", "Half Day"].includes(
+        status
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Attendance Status",
+      });
+    }
+
+    let resolvedEmployeeId = attendance.employeeId;
+
+    // If employeeId is provided, find employee
     if (employeeId) {
-      const employeeExists = await Employee.findById(employeeId);
-      if (!employeeExists) {
-        return res.status(404).json({ message: "Employee not found" });
+      let employee;
+
+      if (mongoose.Types.ObjectId.isValid(employeeId)) {
+        employee = await Employee.findById(employeeId);
+      }
+
+      if (!employee) {
+        employee = await Employee.findOne({
+          employeeId: employeeId,
+        });
+      }
+
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          message: "Employee Not Found",
+        });
+      }
+
+      resolvedEmployeeId = employee._id;
+    }
+
+    // Check duplicate attendance when employee/date changes
+    if (employeeId || attendanceDate) {
+      const dateToCheck =
+        attendanceDate || attendance.attendanceDate;
+
+      const startOfDay = new Date(dateToCheck);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(dateToCheck);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const duplicate = await Attendance.findOne({
+        employeeId: resolvedEmployeeId,
+        attendanceDate: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+        _id: {
+          $ne: req.params.id,
+        },
+      });
+
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "Attendance already exists for this employee on this date",
+        });
       }
     }
 
-    const payload = {
-      ...(employeeId ? { employeeId } : {}),
-      ...(attendanceDate ? { attendanceDate } : {}),
-      ...(status ? { status } : {}),
-      ...(checkInTime !== undefined ? { checkInTime } : {}),
-      ...(checkOutTime !== undefined ? { checkOutTime } : {}),
-      ...(workedHours !== undefined ? { workedHours } : {}),
-      ...(notes !== undefined ? { notes } : {}),
-    };
+    // Update
+    attendance.employeeId = resolvedEmployeeId;
 
-    const updatedAttendance = await Attendance.findByIdAndUpdate(req.params.id, payload, {
-      new: true,
-      runValidators: true,
-    });
+    if (attendanceDate !== undefined) {
+      attendance.attendanceDate = attendanceDate;
+    }
 
-    res.status(200).json({
+    if (status !== undefined) {
+      attendance.status = status;
+    }
+
+    if (checkInTime !== undefined) {
+      attendance.checkInTime = checkInTime;
+    }
+
+    if (checkOutTime !== undefined) {
+      attendance.checkOutTime = checkOutTime;
+    }
+
+    if (workedHours !== undefined) {
+      attendance.workedHours = workedHours;
+    }
+
+    if (notes !== undefined) {
+      attendance.notes = notes;
+    }
+
+    await attendance.save();
+
+    const updatedAttendance =
+      await Attendance.findById(attendance._id).populate(
+        "employeeId",
+        "employeeId firstName lastName email"
+      );
+
+    return res.status(200).json({
+      success: true,
       message: "Attendance Updated Successfully",
-      attendance: formatAttendanceRecord(await updatedAttendance.populate({ path: "employeeId", populate: { path: "departmentId", select: "name" } })),
+      attendance: updatedAttendance,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Update Attendance Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+// ==========================================
+// Delete Attendance
+// ==========================================
 const deleteAttendance = async (req, res) => {
   try {
-    const attendance = await Attendance.findById(req.params.id);
+    const attendance = await Attendance.findById(
+      req.params.id
+    );
 
     if (!attendance) {
-      return res.status(404).json({ message: "Attendance Record Not Found" });
+      return res.status(404).json({
+        success: false,
+        message: "Attendance Not Found",
+      });
     }
 
     await Attendance.findByIdAndDelete(req.params.id);
 
-    res.status(200).json({ message: "Attendance Deleted Successfully" });
+    return res.status(200).json({
+      success: true,
+      message: "Attendance Deleted Successfully",
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    console.error("Delete Attendance Error:", error);
 
-const getMyAttendance = async (req, res) => {
-  try {
-    const tokenUser = req.user || {};
-
-    // Try multiple strategies to locate the employee record for the current user:
-    // 1) token may contain an employeeId
-    // 2) there may be a Profile linked to this user (Profile.createdBy === userId) containing employeeId
-    // 3) fallback to matching employee by email in token
-    let employee = null;
-
-    if (tokenUser.employeeId) {
-      employee = await Employee.findById(tokenUser.employeeId);
-    }
-
-    if (!employee && tokenUser.userId) {
-      const profile = await Profile.findOne({ createdBy: tokenUser.userId });
-      if (profile && profile.employeeId) {
-        employee = await Employee.findOne({ employeeId: profile.employeeId });
-      }
-    }
-
-    if (!employee && tokenUser.email) {
-      employee = await Employee.findOne({ email: tokenUser.email });
-    }
-
-    if (!employee) {
-      return res.status(404).json({ message: "Employee record not found for current user" });
-    }
-
-    const attendance = await Attendance.find({ employeeId: employee._id })
-      .sort({ attendanceDate: -1 })
-      .populate({
-        path: "employeeId",
-        select: "employeeId firstName lastName departmentId",
-        populate: { path: "departmentId", select: "name" },
-      });
-
-    const result = attendance.map(formatAttendanceRecord);
-
-    res.status(200).json({ message: "My Attendance", count: result.length, attendance: result });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 module.exports = {
   createAttendance,
   getAttendance,
-  getAttendanceSummary,
   getMyAttendance,
+  getAttendanceById,
   updateAttendance,
   deleteAttendance,
 };

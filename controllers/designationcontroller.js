@@ -1,11 +1,12 @@
 const Designation = require("../models/Designation");
 
+// ==========================
 // Create Designation
+// ==========================
 const createDesignation = async (req, res) => {
   try {
     const { designationName, departmentId } = req.body;
 
-    // Required Field Validations
     if (!designationName) {
       return res.status(400).json({
         message: "Designation Name is required",
@@ -18,7 +19,6 @@ const createDesignation = async (req, res) => {
       });
     }
 
-    // Check Duplicate Designation
     const existingDesignation = await Designation.findOne({
       designationName,
       departmentId,
@@ -30,7 +30,6 @@ const createDesignation = async (req, res) => {
       });
     }
 
-    // Create Designation
     const designation = await Designation.create({
       designationName,
       departmentId,
@@ -47,13 +46,14 @@ const createDesignation = async (req, res) => {
   }
 };
 
+// ==========================
 // Get All Designations
+// ==========================
 const getDesignations = async (req, res) => {
   try {
-    const designations = await Designation.find().populate(
-      "departmentId",
-      "departmentName"
-    );
+    const designations = await Designation.find()
+      .populate("departmentId", "departmentName")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       message: "Designation List",
@@ -67,13 +67,13 @@ const getDesignations = async (req, res) => {
   }
 };
 
+// ==========================
 // Get Designation By ID
+// ==========================
 const getDesignationById = async (req, res) => {
   try {
-    const designation = await Designation.findById(req.params.id).populate(
-      "departmentId",
-      "departmentName"
-    );
+    const designation = await Designation.findById(req.params.id)
+      .populate("departmentId", "departmentName");
 
     if (!designation) {
       return res.status(404).json({
@@ -91,7 +91,9 @@ const getDesignationById = async (req, res) => {
   }
 };
 
+// ==========================
 // Update Designation
+// ==========================
 const updateDesignation = async (req, res) => {
   try {
     const { designationName, departmentId } = req.body;
@@ -116,7 +118,6 @@ const updateDesignation = async (req, res) => {
       });
     }
 
-    // Check Duplicate Designation
     const existingDesignation = await Designation.findOne({
       designationName,
       departmentId,
@@ -152,7 +153,9 @@ const updateDesignation = async (req, res) => {
   }
 };
 
+// ==========================
 // Delete Designation
+// ==========================
 const deleteDesignation = async (req, res) => {
   try {
     const designation = await Designation.findById(req.params.id);

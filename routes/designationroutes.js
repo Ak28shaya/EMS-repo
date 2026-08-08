@@ -1,28 +1,27 @@
 const express = require("express");
 const router = express.Router();
 
-const authMiddleware = require("../middleware/authMiddleware");
-const roleMiddleware = require("../middleware/roleMiddleware");
-const ROLE_PERMISSIONS = require("../config/rolepermissions");
-
 const {
   createDesignation,
   getDesignations,
   getDesignationById,
   updateDesignation,
   deleteDesignation,
-} = require("../controllers/designationcontroller");
+} = require("../controllers/designationController");
 
-const allowed = ROLE_PERMISSIONS.getAllowedRoleVariants("designation");
+// Create Designation
+router.post("/", createDesignation);
 
-router.post("/", authMiddleware, roleMiddleware(...allowed), createDesignation);
+// Get All Designations
+router.get("/", getDesignations);
 
-router.get("/", authMiddleware, roleMiddleware(...allowed), getDesignations);
+// Get Designation By ID
+router.get("/:id", getDesignationById);
 
-router.get("/:id", authMiddleware, roleMiddleware(...allowed), getDesignationById);
+// Update Designation
+router.put("/:id", updateDesignation);
 
-router.put("/:id", authMiddleware, roleMiddleware(...allowed), updateDesignation);
-
-router.delete("/:id", authMiddleware, roleMiddleware(...allowed), deleteDesignation);
+// Delete Designation
+router.delete("/:id", deleteDesignation);
 
 module.exports = router;

@@ -1,29 +1,18 @@
 const Notice = require("../models/Notice");
 
+// ==============================
 // Create Notice
+// ==============================
 const createNotice = async (req, res) => {
   try {
     const { title, description, postedBy } = req.body;
 
-    // Required Field Validations
-    if (!title) {
+    if (!title || !description || !postedBy) {
       return res.status(400).json({
-        message: "Title is required",
+        message: "Title, Description and Posted By are required",
       });
     }
 
-    if (!description) {
-      return res.status(400).json({
-        message: "Description is required",
-      });
-    }
-
-    if (!postedBy) {
-      return res.status(400).json({
-        message: "Posted By is required",
-      });
-    }
-    // Create Notice
     const notice = await Notice.create({
       title,
       description,
@@ -41,32 +30,19 @@ const createNotice = async (req, res) => {
   }
 };
 
+// ==============================
 // Get All Notices
+// ==============================
 const getNotices = async (req, res) => {
   try {
-    const notices = await Notice.find().populate(
-      "postedBy",
-      "employeeId firstName lastName"
-    );
-
-    const result = notices.map((notice) => ({
-      _id: notice._id,
-      title: notice.title,
-      description: notice.description,
-      postedBy: notice.postedBy
-        ? {
-            _id: notice.postedBy._id,
-            employeeId: notice.postedBy.employeeId,
-            employeeName: `${notice.postedBy.firstName} ${notice.postedBy.lastName}`,
-          }
-        : null,
-      createdAt: notice.createdAt,
-    }));
+    const notices = await Notice.find()
+      .populate("postedBy")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       message: "Notice List",
-      count: result.length,
-      notices: result,
+      count: notices.length,
+      notices,
     });
   } catch (error) {
     res.status(500).json({
@@ -75,13 +51,12 @@ const getNotices = async (req, res) => {
   }
 };
 
+// ==============================
 // Get Notice By ID
+// ==============================
 const getNoticeById = async (req, res) => {
   try {
-    const notice = await Notice.findById(req.params.id).populate(
-      "postedBy",
-      "employeeId firstName lastName"
-    );
+    const notice = await Notice.findById(req.params.id).populate("postedBy");
 
     if (!notice) {
       return res.status(404).json({
@@ -90,7 +65,6 @@ const getNoticeById = async (req, res) => {
     }
 
     res.status(200).json({
-      message: "Notice Found",
       notice,
     });
   } catch (error) {
@@ -100,12 +74,11 @@ const getNoticeById = async (req, res) => {
   }
 };
 
+// ==============================
 // Update Notice
+// ==============================
 const updateNotice = async (req, res) => {
   try {
-    const { title, description, postedBy } = req.body;
-
-    // Check if Notice Exists
     const notice = await Notice.findById(req.params.id);
 
     if (!notice) {
@@ -114,51 +87,14 @@ const updateNotice = async (req, res) => {
       });
     }
 
-    // Required Field Validations
-    if (!title) {
-      return res.status(400).json({
-        message: "Title is required",
-      });
-    }
-
-    if (!description) {
-      return res.status(400).json({
-        message: "Description is required",
-      });
-    }
-
-    if (!postedBy) {
-      return res.status(400).json({
-        message: "Posted By is required",
-      });
-    }
-
-    // Check Duplicate Notice
-    const existingNotice = await Notice.findOne({
-      title,
-      description,
-      _id: { $ne: req.params.id },
-    });
-
-    if (existingNotice) {
-      return res.status(409).json({
-        message: "Notice already exists",
-      });
-    }
-
-    // Update Notice
     const updatedNotice = await Notice.findByIdAndUpdate(
       req.params.id,
-      {
-        title,
-        description,
-        postedBy,
-      },
+      req.body,
       {
         new: true,
         runValidators: true,
       }
-    ).populate("postedBy", "employeeId firstName lastName");
+    ).populate("postedBy");
 
     res.status(200).json({
       message: "Notice Updated Successfully",
@@ -171,7 +107,9 @@ const updateNotice = async (req, res) => {
   }
 };
 
+// ==============================
 // Delete Notice
+// ==============================
 const deleteNotice = async (req, res) => {
   try {
     const notice = await Notice.findById(req.params.id);

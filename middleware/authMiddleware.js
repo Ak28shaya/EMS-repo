@@ -24,6 +24,7 @@ const authMiddleware = async (req, res, next) => {
 
         const decoded = verifyToken(token);
         const userId = decoded._id || decoded.userId;
+        const employeeIdFromToken = decoded.employeeId || decoded.empId || null;
         const user = await User.findById(userId).populate("role");
 
         if (!user) {
@@ -35,6 +36,9 @@ const authMiddleware = async (req, res, next) => {
 
         req.user = {
             id: user._id,
+            _id: user._id,
+            userId: user._id,
+            employeeId: employeeIdFromToken,
             name: user.name,
             email: user.email,
             role: user.role?.name || "",

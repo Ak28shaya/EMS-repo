@@ -9,25 +9,79 @@ const ROLE_PERMISSIONS = require("../config/rolepermissions");
 const {
   createAttendance,
   getAttendance,
-  getAttendanceSummary,
   getMyAttendance,
+  getAttendanceById,
   updateAttendance,
   deleteAttendance,
 } = require("../controllers/attendancecontroller");
 
-const allowed = ROLE_PERMISSIONS.getAllowedRoleVariants("attendance");
+const allowed =
+  ROLE_PERMISSIONS.getAllowedRoleVariants("attendance");
 
-router.post("/", authMiddleware, roleMiddleware(...allowed), createAttendance);
+// ==========================================
+// CREATE
+// POST /attendance
+// ==========================================
+router.post(
+  "/",
+  authMiddleware,
+  roleMiddleware(...allowed),
+  createAttendance
+);
 
-router.get("/summary", authMiddleware, roleMiddleware(...allowed), getAttendanceSummary);
+// ==========================================
+// GET ALL
+// GET /attendance
+// ==========================================
+router.get(
+  "/",
+  authMiddleware,
+  roleMiddleware(...allowed),
+  getAttendance
+);
 
-router.get("/", authMiddleware, roleMiddleware(...allowed), getAttendance);
+// ==========================================
+// GET CURRENT EMPLOYEE
+// GET /attendance/me
+// ==========================================
+router.get(
+  "/me",
+  authMiddleware,
+  roleMiddleware(...allowed),
+  getMyAttendance
+);
 
-// Employee: get current user's attendance
-router.get("/me", authMiddleware, getMyAttendance);
+// ==========================================
+// GET BY ID
+// GET /attendance/:id
+// ==========================================
+router.get(
+  "/:id",
+  authMiddleware,
+  roleMiddleware(...allowed),
+  getAttendanceById
+);
 
-router.put("/:id", authMiddleware, roleMiddleware(...allowed), updateAttendance);
+// ==========================================
+// UPDATE
+// PUT /attendance/:id
+// ==========================================
+router.put(
+  "/:id",
+  authMiddleware,
+  roleMiddleware(...allowed),
+  updateAttendance
+);
 
-router.delete("/:id", authMiddleware, roleMiddleware(...allowed), deleteAttendance);
+// ==========================================
+// DELETE
+// DELETE /attendance/:id
+// ==========================================
+router.delete(
+  "/:id",
+  authMiddleware,
+  roleMiddleware(...allowed),
+  deleteAttendance
+);
 
 module.exports = router;

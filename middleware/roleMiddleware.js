@@ -1,53 +1,84 @@
 const ROLE_PERMISSIONS = require("../config/rolepermissions");
 
 const roleMiddleware = (...allowedRoles) => {
-    const normalizedAllowedRoles = allowedRoles.map((role) => String(role).trim().toLowerCase());
+    // Normalize roles passed from routes
+    const normalizedAllowedRoles = allowedRoles
+        .flat()
+        .map((role) => String(role).trim().toLowerCase());
 
     return (req, res, next) => {
-
         try {
-
+            // ---------------------------------------
+            // 1. Check authentication
+            // ---------------------------------------
             if (!req.user) {
                 return res.status(401).json({
                     success: false,
-                    message: "Unauthorized User."
+                    message: "Unauthorized User.",
                 });
             }
 
-            const userRole = String(req.user.role || "").trim().toLowerCase();
-            const userPermissions = Array.isArray(req.user.permissions)
-                ? req.user.permissions.map((perm) => String(perm).trim().toLowerCase())
-                : [];
+            // ---------------------------------------
+            // 2. Get logged-in user's role
+            // ---------------------------------------
+            const userRole = String(req.user.role || "")
+                .trim()
+                .toLowerCase();
 
+            // ---------------------------------------
+            // 3. Direct role check
+            // ---------------------------------------
             if (normalizedAllowedRoles.includes(userRole)) {
                 return next();
             }
 
-            const hasPermissionRole = userPermissions.some((permission) => {
-                const permittedRoles = ROLE_PERMISSIONS.getRolesForPermission(permission.toLowerCase()).map((role) => role.toLowerCase());
-                return permittedRoles.some((role) => normalizedAllowedRoles.includes(role));
+            // ---------------------------------------
+            // 4. Get user's permissions
+            // ---------------------------------------
+            const userPermissions = Array.isArray(req.user.permissions)
+                ? req.user.permissions.map((permission) =>
+                      String(permission).trim().toLowerCase()
+                  )
+                : [];
+
+            // ---------------------------------------
+            // 5. Check permission-based access
+            // ---------------------------------------
+            const hasPermission = userPermissions.some((permission) => {
+                const permittedRoles =
+                    typeof ROLE_PERMISSIONS.getRolesForPermission === "function"
+                        ? ROLE_PERMISSIONS
+                              .getRolesForPermission(permission)
+                              .map((role) =>
+                                  String(role).trim().toLowerCase()
+                              )
+                        : [];
+
+                return permittedRoles.some((role) =>
+                    normalizedAllowedRoles.includes(role)
+                );
             });
 
-            if (hasPermissionRole) {
+            if (hasPermission) {
                 return next();
             }
 
+            // ---------------------------------------
+            // 6. Access denied
+            // ---------------------------------------
             return res.status(403).json({
                 success: false,
-                message: "Access Forbidden."
+                message: "Access Forbidden.",
             });
-
         } catch (error) {
+            console.error("Role Middleware Error:", error);
 
             return res.status(500).json({
                 success: false,
-                message: "Role Verification Failed."
+                message: "Role Verification Failed.",
             });
-
         }
-
     };
-
 };
 
-module.exports = roleMiddleware;    //role middleware
+module.exports = roleMiddleware;
