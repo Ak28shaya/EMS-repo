@@ -2,9 +2,7 @@ const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const mongoose = require("mongoose");
 
-// ==========================================
-// Create Attendance
-// ==========================================
+
 const createAttendance = async (req, res) => {
   try {
     const {

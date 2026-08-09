@@ -1,4 +1,5 @@
 const Department = require("../models/Department");
+const Employee = require("../models/employee");
 
 // Create Department
 const createDepartment = async (req, res) => {
@@ -165,6 +166,24 @@ const deleteDepartment = async (req, res) => {
     });
   }
 };
+// Get Employees for a Department
+const getDepartmentEmployees = async (req, res) => {
+  try {
+    const { departmentId } = req.params;
+
+    // Validate department exists (optional)
+    const department = await Department.findById(departmentId);
+    if (!department) {
+      return res.status(404).json({ message: "Department Not Found" });
+    }
+
+    const employees = await Employee.find({ departmentId }).populate("designationId");
+
+    res.status(200).json({ employees });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
   createDepartment,
@@ -172,4 +191,5 @@ module.exports = {
   getDepartmentById,
   updateDepartment,
   deleteDepartment,
+  getDepartmentEmployees,
 };

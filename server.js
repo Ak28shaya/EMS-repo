@@ -46,7 +46,9 @@ app.use("/notices", noticeRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/profile", profileRoutes);
+app.use("/leaves", leaveRoutes);
 app.use("/api/leaves", leaveRoutes);
+app.use("/employeedashboard", employeeDashboardRoutes);
 app.use("/api/employeedashboard", employeeDashboardRoutes);
 
 // Home Route

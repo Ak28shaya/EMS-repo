@@ -7,11 +7,15 @@ const {
   getDepartmentById,
   updateDepartment,
   deleteDepartment,
+  getDepartmentEmployees,
 } = require("../controllers/departmentController");
 
 router.post("/", createDepartment);
 
 router.get("/", getDepartments);
+
+// Get employees for a specific department
+router.get("/department/:departmentId", getDepartmentEmployees);
 
 router.get("/:id", getDepartmentById);
 

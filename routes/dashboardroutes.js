@@ -11,6 +11,9 @@ const {
 // Admin Dashboard
 router.get("/admin", authMiddleware, getAdminDashboard);
 
+// Public Admin Dashboard (no auth) - useful for local development / demo
+router.get("/admin/public", getAdminDashboard);
+
 // Employee Dashboard
 router.get("/employee/:employeeId", authMiddleware, getEmployeeDashboard);
 

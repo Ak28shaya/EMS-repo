@@ -53,6 +53,39 @@ const register = async (req, res) => {
   }
 };
 
+// Get Current User
+const getMe = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized access."
+      });
+    }
+
+    const user = await User.findById(req.user.id)
+      .select("-password")
+      .populate("role");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Login
 const login = async (req, res) => {
   try {
@@ -90,6 +123,7 @@ const login = async (req, res) => {
     });
 
     res.status(200).json({
+      success: true,
       message: "Login Successful",
       token,
       user,
@@ -222,6 +256,7 @@ const deleteUser = async (req, res) => {
 module.exports = {
   register,
   login,
+  getMe,
   getAllUsers,
   getUserById,
   updateUser,

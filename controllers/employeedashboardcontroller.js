@@ -44,6 +44,8 @@ const buildEmployeeDashboard = async (employee) => {
   const latestPayroll = await Payroll.findOne({ employeeId: employee._id }).sort({ createdAt: -1 });
   const announcements = await Notice.find().sort({ createdAt: -1 }).limit(5);
 
+  const leaveBalance = employee.leaveBalance != null ? employee.leaveBalance : approvedLeaves;
+
   return {
     employeeProfile: {
       id: employee._id,
@@ -59,6 +61,7 @@ const buildEmployeeDashboard = async (employee) => {
       designationName: employee.designationId?.designationName || "",
       profileImage: employee.profileImage || "",
       salary: employee.salary,
+      leaveBalance,
     },
     todayAttendance: attendanceToday,
     recentNotices: announcements,
