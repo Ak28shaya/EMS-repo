@@ -1,5 +1,7 @@
 const { verifyToken } = require("../config/jwt");
 const User = require("../models/User");
+const Employee = require("../models/Employee");
+const Profile = require("../models/profile");
 
 const authMiddleware = async (req, res, next) => {
     try {
@@ -24,7 +26,7 @@ const authMiddleware = async (req, res, next) => {
 
         const decoded = verifyToken(token);
         const userId = decoded._id || decoded.userId;
-        const employeeIdFromToken = decoded.employeeId || decoded.empId || null;
+        let employeeIdFromToken = decoded.employeeId || decoded.empId || null;
         const user = await User.findById(userId).populate("role");
 
         if (!user) {
@@ -32,6 +34,19 @@ const authMiddleware = async (req, res, next) => {
                 success: false,
                 message: "Invalid or Expired Token."
             });
+        }
+
+        if (!employeeIdFromToken) {
+            let employee = await Employee.findOne({ email: user.email });
+            if (!employee) {
+                const profile = await Profile.findOne({ createdBy: user._id });
+                if (profile?.employeeId) {
+                    employee = await Employee.findOne({ employeeId: profile.employeeId });
+                }
+            }
+            if (employee) {
+                employeeIdFromToken = employee._id;
+            }
         }
 
         req.user = {

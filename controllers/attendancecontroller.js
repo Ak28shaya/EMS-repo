@@ -1,7 +1,16 @@
 const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
+const Profile = require("../models/profile");
 const mongoose = require("mongoose");
 
+const attendanceEmployeePopulate = {
+  path: "employeeId",
+  select: "employeeId firstName lastName email departmentId",
+  populate: {
+    path: "departmentId",
+    select: "departmentName",
+  },
+};
 
 const createAttendance = async (req, res) => {
   try {
@@ -109,8 +118,7 @@ const createAttendance = async (req, res) => {
     // Populate employee details
     const populatedAttendance =
       await Attendance.findById(attendance._id).populate(
-        "employeeId",
-        "employeeId firstName lastName email"
+        attendanceEmployeePopulate
       );
 
     return res.status(201).json({
@@ -134,10 +142,7 @@ const createAttendance = async (req, res) => {
 const getAttendance = async (req, res) => {
   try {
     const attendance = await Attendance.find()
-      .populate(
-        "employeeId",
-        "employeeId firstName lastName email"
-      )
+      .populate(attendanceEmployeePopulate)
       .sort({
         attendanceDate: -1,
       });
@@ -157,27 +162,46 @@ const getAttendance = async (req, res) => {
   }
 };
 
+const normalizeEmail = (email) => {
+  if (!email || typeof email !== "string") return null;
+  return email.trim().toLowerCase();
+};
+
+const findEmployeeForCurrentUser = async (user, tokenEmployeeId) => {
+  if (tokenEmployeeId) {
+    if (mongoose.Types.ObjectId.isValid(tokenEmployeeId)) {
+      const byId = await Employee.findById(tokenEmployeeId);
+      if (byId) return byId;
+    }
+
+    const byCode = await Employee.findOne({ employeeId: tokenEmployeeId });
+    if (byCode) return byCode;
+  }
+
+  const email = normalizeEmail(user?.email);
+  if (email) {
+    const byEmail = await Employee.findOne({ email });
+    if (byEmail) return byEmail;
+  }
+
+  if (user?.id) {
+    const profile = await Profile.findOne({ createdBy: user.id });
+    if (profile?.employeeId) {
+      const byProfile = await Employee.findOne({ employeeId: profile.employeeId });
+      if (byProfile) return byProfile;
+    }
+  }
+
+  return null;
+};
+
 // ==========================================
 // Get Attendance for current authenticated employee
 // ==========================================
 const getMyAttendance = async (req, res) => {
   try {
     const tokenEmployeeId = req.user?.employeeId;
-    if (!tokenEmployeeId) {
-      return res.status(400).json({
-        success: false,
-        message: "Employee information not available for current user",
-      });
-    }
-
-    let employee;
-    if (mongoose.Types.ObjectId.isValid(tokenEmployeeId)) {
-      employee = await Employee.findById(tokenEmployeeId);
-    }
-
-    if (!employee) {
-      employee = await Employee.findOne({ employeeId: tokenEmployeeId });
-    }
+    const employee = await findEmployeeForCurrentUser(req.user, tokenEmployeeId);
 
     if (!employee) {
       return res.status(404).json({
@@ -186,8 +210,13 @@ const getMyAttendance = async (req, res) => {
       });
     }
 
-    const attendance = await Attendance.find({ employeeId: employee._id })
-      .populate("employeeId", "employeeId firstName lastName email")
+    const attendance = await Attendance.find({
+      $or: [
+        { employeeId: employee._id },
+        { employeeId: employee.employeeId }
+      ]
+    })
+      .populate(attendanceEmployeePopulate)
       .sort({ attendanceDate: -1 });
 
     return res.status(200).json({
@@ -212,10 +241,7 @@ const getAttendanceById = async (req, res) => {
   try {
     const attendance = await Attendance.findById(
       req.params.id
-    ).populate(
-      "employeeId",
-      "employeeId firstName lastName email"
-    );
+    ).populate(attendanceEmployeePopulate);
 
     if (!attendance) {
       return res.status(404).json({
@@ -365,8 +391,7 @@ const updateAttendance = async (req, res) => {
 
     const updatedAttendance =
       await Attendance.findById(attendance._id).populate(
-        "employeeId",
-        "employeeId firstName lastName email"
+        attendanceEmployeePopulate
       );
 
     return res.status(200).json({

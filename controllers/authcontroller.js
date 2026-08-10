@@ -1,9 +1,35 @@
 const User = require("../models/User");
 const Role = require("../models/Role");
+const Employee = require("../models/Employee");
+const Profile = require("../models/profile");
 const bcrypt = require("bcrypt");
 const { generateToken } = require("../config/jwt");
 
 const SALT_ROUNDS = 10;
+
+const normalizeEmail = (email) => {
+  if (!email || typeof email !== "string") return null;
+  return email.trim().toLowerCase();
+};
+
+const resolveEmployeeIdForUser = async (user) => {
+  if (!user) return null;
+  const email = normalizeEmail(user.email);
+
+  let employee = null;
+  if (email) {
+    employee = await Employee.findOne({ email });
+  }
+
+  if (!employee) {
+    const profile = await Profile.findOne({ createdBy: user._id });
+    if (profile?.employeeId) {
+      employee = await Employee.findOne({ employeeId: profile.employeeId });
+    }
+  }
+
+  return employee ? employee._id : null;
+};
 
 // Register User
 const register = async (req, res) => {
@@ -74,9 +100,15 @@ const getMe = async (req, res) => {
       });
     }
 
+    const employeeId = await resolveEmployeeIdForUser(user);
+    const sanitizedUser = { ...user.toObject() };
+    if (employeeId) {
+      sanitizedUser.employeeId = employeeId;
+    }
+
     return res.status(200).json({
       success: true,
-      user,
+      user: sanitizedUser,
     });
   } catch (error) {
     return res.status(500).json({
@@ -116,17 +148,26 @@ const login = async (req, res) => {
       });
     }
 
+    const employeeId = await resolveEmployeeIdForUser(user);
+
     const token = generateToken({
       _id: user._id,
       email: user.email,
       role: user.role.name,
+      employeeId,
     });
+
+    const sanitizedUser = { ...user.toObject() };
+    delete sanitizedUser.password;
+    if (employeeId) {
+      sanitizedUser.employeeId = employeeId;
+    }
 
     res.status(200).json({
       success: true,
       message: "Login Successful",
       token,
-      user,
+      user: sanitizedUser,
     });
 
   } catch (error) {
