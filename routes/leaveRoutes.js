@@ -12,15 +12,12 @@ const {
   getMyLeaves,
 } = require("../controllers/leaveController");
 
-// Public create/list routes (admins or internal callers may protect these elsewhere)
-router.post("/", createLeave);
-router.get("/", getLeaves);
-
-// Current user leaves (protected)
+// Protected leave routes
+router.post("/", authMiddleware, createLeave);
+router.get("/", authMiddleware, getLeaves);
 router.get("/me", authMiddleware, getMyLeaves);
-
-router.get("/:id", getLeaveById);
-router.put("/:id", updateLeave);
-router.delete("/:id", deleteLeave);
+router.get("/:id", authMiddleware, getLeaveById);
+router.put("/:id", authMiddleware, updateLeave);
+router.delete("/:id", authMiddleware, deleteLeave);
 
 module.exports = router;

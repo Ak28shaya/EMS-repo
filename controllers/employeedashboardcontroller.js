@@ -37,14 +37,35 @@ const buildEmployeeDashboard = async (employee) => {
   const presentDays = monthlyAttendance.filter((a) => a.status === "Present").length;
   const attendancePercentage = totalWorkingDays > 0 ? ((presentDays / totalWorkingDays) * 100).toFixed(2) : 0;
 
-  const approvedLeaves = await Leave.countDocuments({ employeeId: employee._id, status: "Approved" });
+  const approvedLeaveDocs = await Leave.find({ employeeId: employee._id, status: "Approved" });
   const pendingLeaves = await Leave.countDocuments({ employeeId: employee._id, status: "Pending" });
   const rejectedLeaves = await Leave.countDocuments({ employeeId: employee._id, status: "Rejected" });
 
+  const usedLeaveDays = approvedLeaveDocs.reduce((sum, leave) => {
+    if (typeof leave.totalDays === "number") return sum + leave.totalDays;
+    if (leave.fromDate && leave.toDate) {
+      const from = new Date(leave.fromDate);
+      const to = new Date(leave.toDate);
+      const diffDays = Math.round((to - from) / (1000 * 60 * 60 * 24)) + 1;
+      return sum + Math.max(1, diffDays);
+    }
+    return sum + 1;
+  }, 0);
+
+  const joinDate = employee.joiningDate ? new Date(employee.joiningDate) : new Date(employee.createdAt || Date.now());
+  const now = new Date();
+  const yearDiff = now.getFullYear() - joinDate.getFullYear();
+  const monthDiff = now.getMonth() - joinDate.getMonth();
+  let monthsEmployed = yearDiff * 12 + monthDiff;
+  if (now.getDate() >= joinDate.getDate()) {
+    monthsEmployed += 1;
+  }
+  monthsEmployed = Math.max(1, monthsEmployed);
+  const accruedLeaveDays = monthsEmployed * 3;
+  const leaveBalance = Math.max(0, accruedLeaveDays - usedLeaveDays);
+
   const latestPayroll = await Payroll.findOne({ employeeId: employee._id }).sort({ createdAt: -1 });
   const announcements = await Notice.find().sort({ createdAt: -1 }).limit(5);
-
-  const leaveBalance = employee.leaveBalance != null ? employee.leaveBalance : approvedLeaves;
 
   return {
     employeeProfile: {

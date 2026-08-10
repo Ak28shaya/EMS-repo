@@ -1,7 +1,6 @@
 const User = require("../models/User");
 const Employee = require("../models/Employee");
 const Role = require("../models/Role");
-const Employee = require("../models/Employee");
 const Profile = require("../models/profile");
 const bcrypt = require("bcrypt");
 const { generateToken } = require("../config/jwt");
@@ -161,27 +160,13 @@ const login = async (req, res) => {
       });
     }
 
-<<<<<<< HEAD
     const employeeId = await resolveEmployeeIdForUser(user);
-=======
-    // Try to find a matching Employee record to include employeeId in token
-    let linkedEmployee = null;
-    try {
-      linkedEmployee = await Employee.findOne({ email: user.email }).select("_id");
-    } catch (e) {
-      linkedEmployee = null;
-    }
->>>>>>> afde6fb (change in backend)
 
     const token = generateToken({
       _id: user._id,
       email: user.email,
       role: user.role.name,
-<<<<<<< HEAD
       employeeId,
-=======
-      employeeId: linkedEmployee ? String(linkedEmployee._id) : undefined,
->>>>>>> afde6fb (change in backend)
     });
 
     const sanitizedUser = { ...user.toObject() };
