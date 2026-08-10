@@ -1,4 +1,5 @@
 const Leave = require("../models/Leave");
+const Employee = require("../models/Employee");
 
 // ==========================
 // Create Leave
@@ -167,3 +168,34 @@ module.exports = {
   updateLeave,
   deleteLeave,
 };
+
+// Get leaves for the currently authenticated user
+const getMyLeaves = async (req, res) => {
+  try {
+    const tokenEmployeeId = req.user?.employeeId;
+
+    if (!tokenEmployeeId) {
+      return res.status(400).json({ success: false, message: "Employee identifier missing in token." });
+    }
+
+    let employee = null;
+    const mongoose = require("mongoose");
+    if (mongoose.Types.ObjectId.isValid(tokenEmployeeId)) {
+      employee = await Employee.findById(tokenEmployeeId).select("_id employeeId firstName lastName email");
+    } else {
+      employee = await Employee.findOne({ employeeId: tokenEmployeeId }).select("_id employeeId firstName lastName email");
+    }
+
+    if (!employee) {
+      return res.status(404).json({ success: false, message: "Employee not found for current user." });
+    }
+
+    const leaves = await Leave.find({ employeeId: employee._id }).populate("employeeId").sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, count: leaves.length, leaves });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports.getMyLeaves = getMyLeaves;

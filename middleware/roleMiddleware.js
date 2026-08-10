@@ -33,13 +33,19 @@ const roleMiddleware = (...allowedRoles) => {
             }
 
             // ---------------------------------------
-            // 4. Get user's permissions
+            // 4. Get user's permissions from both explicit user permissions and role permissions
             // ---------------------------------------
-            const userPermissions = Array.isArray(req.user.permissions)
-                ? req.user.permissions.map((permission) =>
-                      String(permission).trim().toLowerCase()
-                  )
-                : [];
+            const rawPermissions = [
+                ...(Array.isArray(req.user.permissions) ? req.user.permissions : []),
+                ...(Array.isArray(req.user.rolePermissions) ? req.user.rolePermissions : []),
+            ];
+            const userPermissions = Array.from(
+                new Set(
+                    rawPermissions
+                        .filter((permission) => permission != null)
+                        .map((permission) => String(permission).trim().toLowerCase())
+                )
+            );
 
             // ---------------------------------------
             // 5. Check permission-based access

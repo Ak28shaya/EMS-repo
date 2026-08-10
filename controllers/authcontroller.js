@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Employee = require("../models/Employee");
 const Role = require("../models/Role");
 const Employee = require("../models/Employee");
 const Profile = require("../models/profile");
@@ -65,6 +66,7 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       role: roleDoc._id,
+      permissions: roleDoc.permissions || [],
     });
 
     res.status(201).json({
@@ -121,6 +123,7 @@ const getMe = async (req, res) => {
 // Login
 const login = async (req, res) => {
   try {
+    console.log("[authcontroller] login body:", req.body);
 
     const { email, password } = req.body;
 
@@ -140,6 +143,16 @@ const login = async (req, res) => {
       });
     }
 
+    if (!user.role) {
+      console.error("[authcontroller] login failed: missing role for user", {
+        userId: user._id,
+        email: user.email,
+      });
+      return res.status(500).json({
+        message: "User role is not configured. Please contact the administrator.",
+      });
+    }
+
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
@@ -148,13 +161,27 @@ const login = async (req, res) => {
       });
     }
 
+<<<<<<< HEAD
     const employeeId = await resolveEmployeeIdForUser(user);
+=======
+    // Try to find a matching Employee record to include employeeId in token
+    let linkedEmployee = null;
+    try {
+      linkedEmployee = await Employee.findOne({ email: user.email }).select("_id");
+    } catch (e) {
+      linkedEmployee = null;
+    }
+>>>>>>> afde6fb (change in backend)
 
     const token = generateToken({
       _id: user._id,
       email: user.email,
       role: user.role.name,
+<<<<<<< HEAD
       employeeId,
+=======
+      employeeId: linkedEmployee ? String(linkedEmployee._id) : undefined,
+>>>>>>> afde6fb (change in backend)
     });
 
     const sanitizedUser = { ...user.toObject() };
@@ -171,8 +198,9 @@ const login = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("[authcontroller] login error:", error);
     res.status(500).json({
-      message: error.message,
+      message: error.message || "Server Error",
     });
   }
 };
@@ -244,6 +272,7 @@ const updateUser = async (req, res) => {
         name,
         email,
         role: roleDoc._id,
+        permissions: roleDoc.permissions || [],
       },
       {
         new: true,
