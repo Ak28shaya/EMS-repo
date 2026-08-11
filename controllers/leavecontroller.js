@@ -1,5 +1,45 @@
+const mongoose = require("mongoose");
 const Leave = require("../models/Leave");
 const Employee = require("../models/Employee");
+const Profile = require("../models/profile");
+
+const resolveEmployeeForLeave = async (req) => {
+  const bodyEmployeeId = req.body.employeeId;
+  if (bodyEmployeeId) {
+    if (mongoose.Types.ObjectId.isValid(bodyEmployeeId)) {
+      const employee = await Employee.findById(bodyEmployeeId);
+      if (employee) return employee;
+    }
+    const employeeByCode = await Employee.findOne({ employeeId: bodyEmployeeId });
+    if (employeeByCode) return employeeByCode;
+  }
+
+  const tokenEmployeeId = req.user?.employeeId;
+  if (tokenEmployeeId) {
+    if (mongoose.Types.ObjectId.isValid(tokenEmployeeId)) {
+      const employee = await Employee.findById(tokenEmployeeId);
+      if (employee) return employee;
+    }
+    const employeeByCode = await Employee.findOne({ employeeId: tokenEmployeeId });
+    if (employeeByCode) return employeeByCode;
+  }
+
+  const email = req.user?.email;
+  if (email) {
+    const employeeByEmail = await Employee.findOne({ email });
+    if (employeeByEmail) return employeeByEmail;
+  }
+
+  if (req.user?.id) {
+    const profile = await Profile.findOne({ createdBy: req.user.id });
+    if (profile?.employeeId) {
+      const employeeByProfile = await Employee.findOne({ employeeId: profile.employeeId });
+      if (employeeByProfile) return employeeByProfile;
+    }
+  }
+
+  return null;
+};
 
 // ==========================
 // Create Leave
@@ -17,21 +57,25 @@ const createLeave = async (req, res) => {
     const tokenEmployeeId = req.user?.employeeId;
     const employeeId = bodyEmployeeId || tokenEmployeeId;
 
-    if (
-      !employeeId ||
-      !leaveType ||
-      !fromDate ||
-      !toDate ||
-      !reason
-    ) {
+    if (!leaveType || !fromDate || !toDate || !reason) {
       return res.status(400).json({
-        message: "All fields are required",
+        success: false,
+        message: "Leave type, start date, end date and reason are required",
       });
     }
 
     if (new Date(fromDate) > new Date(toDate)) {
       return res.status(400).json({
+        success: false,
         message: "From Date cannot be greater than To Date",
+      });
+    }
+
+    const employee = await resolveEmployeeForLeave(req);
+    if (!employee) {
+      return res.status(400).json({
+        success: false,
+        message: "Unable to resolve employee for leave request",
       });
     }
 
@@ -42,7 +86,7 @@ const createLeave = async (req, res) => {
       ) + 1;
 
     const leave = await Leave.create({
-      employeeId,
+      employeeId: employee._id,
       leaveType,
       fromDate,
       toDate,
@@ -52,11 +96,13 @@ const createLeave = async (req, res) => {
 
     res.status(201).json({
       success: true,
+      success: true,
       message: "Leave Applied Successfully",
       leave,
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -73,12 +119,14 @@ const getLeaves = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      success: true,
       message: "Leave List",
       count: leaves.length,
       leaves,
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       success: false,
       message: error.message,
     });
@@ -96,16 +144,19 @@ const getLeaveById = async (req, res) => {
     if (!leave) {
       return res.status(404).json({
         success: false,
+        success: false,
         message: "Leave Not Found",
       });
     }
 
     res.status(200).json({
       success: true,
+      success: true,
       leave,
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       success: false,
       message: error.message,
     });
@@ -122,6 +173,7 @@ const updateLeave = async (req, res) => {
     if (!leave) {
       return res.status(404).json({
         success: false,
+        success: false,
         message: "Leave Not Found",
       });
     }
@@ -137,11 +189,13 @@ const updateLeave = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      success: true,
       message: "Leave Updated Successfully",
       leave: updatedLeave,
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       success: false,
       message: error.message,
     });
@@ -158,6 +212,7 @@ const deleteLeave = async (req, res) => {
     if (!leave) {
       return res.status(404).json({
         success: false,
+        success: false,
         message: "Leave Not Found",
       });
     }
@@ -166,22 +221,16 @@ const deleteLeave = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      success: true,
       message: "Leave Deleted Successfully",
     });
   } catch (error) {
     res.status(500).json({
       success: false,
+      success: false,
       message: error.message,
     });
   }
-};
-
-module.exports = {
-  createLeave,
-  getLeaves,
-  getLeaveById,
-  updateLeave,
-  deleteLeave,
 };
 
 // Get leaves for the currently authenticated user
@@ -213,4 +262,11 @@ const getMyLeaves = async (req, res) => {
   }
 };
 
-module.exports.getMyLeaves = getMyLeaves;
+module.exports = {
+  createLeave,
+  getLeaves,
+  getLeaveById,
+  updateLeave,
+  deleteLeave,
+  getMyLeaves,
+};
