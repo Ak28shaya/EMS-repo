@@ -45,11 +45,6 @@ const profileSchema = new mongoose.Schema(
       required: true,
     },
 
-    password: {
-      type: String,
-      required: true,
-    },
-
     gender: {
       type: String,
       enum: ["Male", "Female", "Other"],

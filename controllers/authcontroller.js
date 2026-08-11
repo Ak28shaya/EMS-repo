@@ -1,7 +1,7 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Employee = require("../models/Employee");
 const Role = require("../models/Role");
-const Employee = require("../models/Employee");
 const Profile = require("../models/profile");
 const bcrypt = require("bcrypt");
 const { generateToken } = require("../config/jwt");
@@ -161,31 +161,18 @@ const login = async (req, res) => {
       });
     }
 
-<<<<<<< HEAD
     const employeeId = await resolveEmployeeIdForUser(user);
-=======
-    // Try to find a matching Employee record to include employeeId in token
-    let linkedEmployee = null;
-    try {
-      linkedEmployee = await Employee.findOne({ email: user.email }).select("_id");
-    } catch (e) {
-      linkedEmployee = null;
-    }
->>>>>>> afde6fb (change in backend)
 
     const token = generateToken({
       _id: user._id,
       email: user.email,
       role: user.role.name,
-<<<<<<< HEAD
       employeeId,
-=======
-      employeeId: linkedEmployee ? String(linkedEmployee._id) : undefined,
->>>>>>> afde6fb (change in backend)
     });
 
     const sanitizedUser = { ...user.toObject() };
     delete sanitizedUser.password;
+    sanitizedUser.role = user.role?.name || sanitizedUser.role;
     if (employeeId) {
       sanitizedUser.employeeId = employeeId;
     }
@@ -250,30 +237,83 @@ const getUserById = async (req, res) => {
   }
 };
 
+const normalizePermissions = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((permission) => permission !== undefined && permission !== null)
+    .map((permission) => String(permission).trim())
+    .filter(Boolean);
+};
+
+const resolveRoleDocument = async (roleInput) => {
+  if (roleInput === undefined || roleInput === null || roleInput === "") {
+    return null;
+  }
+
+  if (mongoose.Types.ObjectId.isValid(String(roleInput))) {
+    const byId = await Role.findById(roleInput);
+    if (byId) return byId;
+  }
+
+  const byName = await Role.findOne({
+    name: { $regex: `^${String(roleInput).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+  });
+
+  return byName;
+};
+
 // Update User
 const updateUser = async (req, res) => {
   try {
+    const { name, email, role, permissions } = req.body;
+    const updatePayload = {};
 
-    const { name, email, role } = req.body;
+    if (name !== undefined) {
+      updatePayload.name = String(name).trim();
+    }
 
-    const roleDoc = await Role.findOne({
-      name: role.toLowerCase(),
-    });
+    if (email !== undefined) {
+      updatePayload.email = String(email).trim().toLowerCase();
+    }
 
-    if (!roleDoc) {
-      return res.status(404).json({
-        message: "Role Not Found",
-      });
+    let roleDoc = null;
+
+    // Load existing user to check current assignment
+    const existingUser = await User.findById(req.params.id).populate("role");
+    if (!existingUser) {
+      return res.status(404).json({ message: "User Not Found" });
+    }
+
+    if (role !== undefined) {
+      roleDoc = await resolveRoleDocument(role);
+      if (!roleDoc) {
+        return res.status(404).json({
+          message: "Role Not Found",
+        });
+      }
+
+      // Prevent assigning a different role if the user already has one
+      // Allow override when caller specifies force=true (query param or body) or when caller is an admin
+      const force = req.query?.force === "true" || req.body?.force === true;
+      const callerIsAdmin = String(req.user?.role || "").trim().toLowerCase() === "admin";
+      if (existingUser.role && String(existingUser.role._id) !== String(roleDoc._id) && !(force || callerIsAdmin)) {
+        return res.status(409).json({
+          message: "User already has a role assigned",
+        });
+      }
+
+      updatePayload.role = roleDoc._id;
+    }
+
+    if (permissions !== undefined) {
+      updatePayload.permissions = normalizePermissions(permissions);
+    } else if (roleDoc) {
+      updatePayload.permissions = roleDoc.permissions || [];
     }
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      {
-        name,
-        email,
-        role: roleDoc._id,
-        permissions: roleDoc.permissions || [],
-      },
+      updatePayload,
       {
         new: true,
         runValidators: true,

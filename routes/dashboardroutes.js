@@ -6,7 +6,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const {
   getAdminDashboard,
   getEmployeeDashboard,
-} = require("../controllers/dashboardController");
+} = require("../controllers/dashboardcontroller");
 
 // Admin Dashboard
 router.get("/admin", authMiddleware, getAdminDashboard);
@@ -15,6 +15,7 @@ router.get("/admin", authMiddleware, getAdminDashboard);
 router.get("/admin/public", getAdminDashboard);
 
 // Employee Dashboard
+router.get("/employee/me", authMiddleware, getEmployeeDashboard);
 router.get("/employee/:employeeId", authMiddleware, getEmployeeDashboard);
 
 module.exports = router;

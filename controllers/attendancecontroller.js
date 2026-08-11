@@ -167,6 +167,23 @@ const normalizeEmail = (email) => {
   return email.trim().toLowerCase();
 };
 
+const getEmployeeIdentityCandidates = (employee) => {
+  const candidates = new Set();
+
+  if (employee?._id) {
+    candidates.add(employee._id);
+    if (typeof employee._id?.toString === "function") {
+      candidates.add(employee._id.toString());
+    }
+  }
+
+  if (employee?.employeeId) {
+    candidates.add(employee.employeeId);
+  }
+
+  return Array.from(candidates).filter(Boolean);
+};
+
 const findEmployeeForCurrentUser = async (user, tokenEmployeeId) => {
   if (tokenEmployeeId) {
     if (mongoose.Types.ObjectId.isValid(tokenEmployeeId)) {
@@ -210,12 +227,22 @@ const getMyAttendance = async (req, res) => {
       });
     }
 
-    const attendance = await Attendance.find({
-      $or: [
-        { employeeId: employee._id },
-        { employeeId: employee.employeeId }
-      ]
-    })
+    const employeeIdCandidates = [];
+
+    if (employee?._id) {
+      employeeIdCandidates.push(employee._id);
+      if (typeof employee._id?.toString === "function") {
+        employeeIdCandidates.push(employee._id.toString());
+      }
+    }
+
+    const attendanceQuery = employeeIdCandidates.length
+      ? {
+          $or: employeeIdCandidates.map((candidate) => ({ employeeId: candidate })),
+        }
+      : { employeeId: employee._id };
+
+    const attendance = await Attendance.find(attendanceQuery)
       .populate(attendanceEmployeePopulate)
       .sort({ attendanceDate: -1 });
 

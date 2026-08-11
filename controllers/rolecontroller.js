@@ -1,11 +1,37 @@
 const Role = require("../models/Role");
+const User = require("../models/User");
+
+const normalizeRoleName = (value) => {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
+};
+
+const normalizePermissions = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((permission) => permission !== undefined && permission !== null)
+    .map((permission) => String(permission).trim())
+    .filter(Boolean);
+};
 
 // ==============================
 // Create Role
 // ==============================
 const createRole = async (req, res) => {
   try {
-    const role = await Role.create(req.body);
+    const roleName = normalizeRoleName(req.body?.name);
+
+    if (!roleName) {
+      return res.status(400).json({
+        message: "Role name is required",
+      });
+    }
+
+    // Allow duplicate role names per user request. Create role directly.
+    const role = await Role.create({
+      name: roleName,
+      permissions: normalizePermissions(req.body?.permissions),
+    });
 
     res.status(201).json({
       message: "Role Created Successfully",
@@ -65,9 +91,25 @@ const getRoleById = async (req, res) => {
 // ==============================
 const updateRole = async (req, res) => {
   try {
+    const updatePayload = {};
+
+    if (req.body?.name !== undefined) {
+      const roleName = normalizeRoleName(req.body.name);
+      if (!roleName) {
+        return res.status(400).json({
+          message: "Role name is required",
+        });
+      }
+      updatePayload.name = roleName;
+    }
+
+    if (req.body?.permissions !== undefined) {
+      updatePayload.permissions = normalizePermissions(req.body.permissions);
+    }
+
     const role = await Role.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updatePayload,
       {
         new: true,
         runValidators: true,
@@ -96,13 +138,22 @@ const updateRole = async (req, res) => {
 // ==============================
 const deleteRole = async (req, res) => {
   try {
-    const role = await Role.findByIdAndDelete(req.params.id);
+    const role = await Role.findById(req.params.id);
 
     if (!role) {
       return res.status(404).json({
         message: "Role Not Found",
       });
     }
+
+    const assignedUsers = await User.countDocuments({ role: role._id });
+    if (assignedUsers > 0) {
+      return res.status(409).json({
+        message: "Cannot delete a role that is assigned to users",
+      });
+    }
+
+    await Role.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       message: "Role Deleted Successfully",

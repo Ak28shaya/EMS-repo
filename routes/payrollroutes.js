@@ -4,15 +4,19 @@ const router = express.Router();
 const {
   createPayroll,
   getPayrolls,
+  getMyPayrolls,
   getPayrollById,
   updatePayroll,
   deletePayroll,
 } = require("../controllers/payrollcontroller");
 
-router.post("/", createPayroll);
-router.get("/", getPayrolls);
-router.get("/:id", getPayrollById);
-router.put("/:id", updatePayroll);
-router.delete("/:id", deletePayroll);
+const authMiddleware = require("../middleware/authMiddleware");
+
+router.post("/", authMiddleware, createPayroll);
+router.get("/", authMiddleware, getPayrolls);
+router.get("/me", authMiddleware, getMyPayrolls);
+router.get("/:id", authMiddleware, getPayrollById);
+router.put("/:id", authMiddleware, updatePayroll);
+router.delete("/:id", authMiddleware, deletePayroll);
 
 module.exports = router;

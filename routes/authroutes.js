@@ -3,6 +3,8 @@ const express = require("express");
 const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
+const ROLE_PERMISSIONS = require("../config/rolepermissions");
 const {
   register,
   login,
@@ -12,6 +14,8 @@ const {
   updateUser,
   deleteUser,
 } = require("../controllers/authcontroller");
+
+const allowed = ROLE_PERMISSIONS.getAllowedRoleVariants("user");
 
 // ==============================
 // REGISTER
@@ -35,7 +39,7 @@ router.get("/me", authMiddleware, getMe);
 // GET ALL USERS
 // GET /auth
 // ==============================
-router.get("/", getAllUsers);
+router.get("/", authMiddleware, roleMiddleware(...allowed), getAllUsers);
 
 // ==============================
 // GET USER BY ID
@@ -47,7 +51,7 @@ router.get("/:id", getUserById);
 // UPDATE USER
 // PUT /auth/:id
 // ==============================
-router.put("/:id", updateUser);
+router.put("/:id", authMiddleware, roleMiddleware(...allowed), updateUser);
 
 // ==============================
 // DELETE USER

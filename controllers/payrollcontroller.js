@@ -72,6 +72,34 @@ const getPayrolls = async (req, res) => {
 };
 
 // ==============================
+// Get Current Employee Payrolls
+// ==============================
+const getMyPayrolls = async (req, res) => {
+  try {
+    const tokenEmployeeId = req.user?.employeeId;
+    if (!tokenEmployeeId) {
+      return res.status(400).json({
+        message: "Employee identifier missing in token.",
+      });
+    }
+
+    const payrolls = await Payroll.find({ employeeId: tokenEmployeeId })
+      .populate("employeeId")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      message: "Payroll List",
+      count: payrolls.length,
+      payrolls,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+// ==============================
 // Get Payroll By ID
 // ==============================
 const getPayrollById = async (req, res) => {
@@ -168,6 +196,7 @@ const deletePayroll = async (req, res) => {
 module.exports = {
   createPayroll,
   getPayrolls,
+  getMyPayrolls,
   getPayrollById,
   updatePayroll,
   deletePayroll,

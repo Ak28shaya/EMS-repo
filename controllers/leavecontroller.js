@@ -7,12 +7,15 @@ const Employee = require("../models/Employee");
 const createLeave = async (req, res) => {
   try {
     const {
-      employeeId,
+      employeeId: bodyEmployeeId,
       leaveType,
       fromDate,
       toDate,
       reason,
     } = req.body;
+
+    const tokenEmployeeId = req.user?.employeeId;
+    const employeeId = bodyEmployeeId || tokenEmployeeId;
 
     if (
       !employeeId ||
@@ -48,6 +51,7 @@ const createLeave = async (req, res) => {
     });
 
     res.status(201).json({
+      success: true,
       message: "Leave Applied Successfully",
       leave,
     });
@@ -68,12 +72,14 @@ const getLeaves = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.status(200).json({
+      success: true,
       message: "Leave List",
       count: leaves.length,
       leaves,
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -89,15 +95,18 @@ const getLeaveById = async (req, res) => {
 
     if (!leave) {
       return res.status(404).json({
+        success: false,
         message: "Leave Not Found",
       });
     }
 
     res.status(200).json({
+      success: true,
       leave,
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -112,6 +121,7 @@ const updateLeave = async (req, res) => {
 
     if (!leave) {
       return res.status(404).json({
+        success: false,
         message: "Leave Not Found",
       });
     }
@@ -126,11 +136,13 @@ const updateLeave = async (req, res) => {
     ).populate("employeeId");
 
     res.status(200).json({
+      success: true,
       message: "Leave Updated Successfully",
       leave: updatedLeave,
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -145,6 +157,7 @@ const deleteLeave = async (req, res) => {
 
     if (!leave) {
       return res.status(404).json({
+        success: false,
         message: "Leave Not Found",
       });
     }
@@ -152,10 +165,12 @@ const deleteLeave = async (req, res) => {
     await Leave.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
+      success: true,
       message: "Leave Deleted Successfully",
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }

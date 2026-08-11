@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Employee = require("../models/Employee");
 const Department = require("../models/Department");
 const Designation = require("../models/Designation");
@@ -82,11 +83,36 @@ const getAdminDashboard = async (req, res) => {
 // ============================
 const getEmployeeDashboard = async (req, res) => {
   try {
-    const employee = await Employee.findOne({
-      employeeId: req.params.employeeId,
-    })
-      .populate("departmentId")
-      .populate("designationId");
+    const { employeeId } = req.params;
+    const currentUserEmployeeId = req.user?.employeeId;
+
+    let employee = null;
+
+    if (employeeId && employeeId !== "me") {
+      employee = await Employee.findOne({ employeeId })
+        .populate("departmentId")
+        .populate("designationId");
+    }
+
+    if (!employee && currentUserEmployeeId) {
+      if (mongoose.Types.ObjectId.isValid(currentUserEmployeeId)) {
+        employee = await Employee.findById(currentUserEmployeeId)
+          .populate("departmentId")
+          .populate("designationId");
+      }
+
+      if (!employee) {
+        employee = await Employee.findOne({ employeeId: currentUserEmployeeId })
+          .populate("departmentId")
+          .populate("designationId");
+      }
+    }
+
+    if (!employee && req.user?.email) {
+      employee = await Employee.findOne({ email: req.user.email })
+        .populate("departmentId")
+        .populate("designationId");
+    }
 
     if (!employee) {
       return res.status(404).json({
