@@ -1,38 +1,5 @@
-const Profile = require("../models/Profile");
-const Employee = require("../models/Employee");
-
-const resolveProfileForUser = async (req) => {
-  const tokenEmployeeId = req.user?.employeeId;
-  const userId = req.user?.id;
-  const email = req.user?.email?.toLowerCase?.();
-
-  if (tokenEmployeeId) {
-    let profile = await Profile.findOne({ employeeId: tokenEmployeeId });
-    if (profile) return profile;
-
-    if (require("mongoose").Types.ObjectId.isValid(tokenEmployeeId)) {
-      const employee = await Employee.findById(tokenEmployeeId);
-      if (employee?.employeeId) {
-        profile = await Profile.findOne({ employeeId: employee.employeeId });
-        if (profile) return profile;
-      }
-    }
-  }
-
-  if (email) {
-    const profile = await Profile.findOne({ email });
-    if (profile) return profile;
-  }
-
-  if (userId) {
-    const profile = await Profile.findOne({ createdBy: userId });
-    if (profile) return profile;
-  }
-
-  return null;
-};
 const mongoose = require("mongoose");
-const Profile = require("../models/profile");
+const Profile = require("../models/Profile");
 const Employee = require("../models/Employee");
 
 const resolveEmployeeCode = async (employeeIdToken) => {
@@ -109,11 +76,12 @@ const createProfile = async (req, res) => {
 // ==============================
 const getMyProfile = async (req, res) => {
   try {
-    let profile = await findProfileForCurrentUser(req);
+    const profile = await findProfileForCurrentUser(req);
 
     if (!profile) {
       return res.status(404).json({
-        message: "Profile Not Found",
+        success: false,
+        message: "Profile not found for current user",
       });
     }
 
@@ -123,6 +91,7 @@ const getMyProfile = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -133,17 +102,11 @@ const getMyProfile = async (req, res) => {
 // ==============================
 const updateMyProfile = async (req, res) => {
   try {
-    const employeeId = req.user?.employeeId;
-    if (!employeeId) {
-      return res.status(400).json({
-        message: "Employee ID is required to update profile",
-      });
-    }
-
     const profile = await findProfileForCurrentUser(req);
     if (!profile) {
       return res.status(404).json({
-        message: "Profile Not Found",
+        success: false,
+        message: "Profile not found for current user",
       });
     }
 
@@ -157,22 +120,19 @@ const updateMyProfile = async (req, res) => {
 
     if (!updatedProfile) {
       return res.status(404).json({
-        message: "Profile Not Found",
-      });
-    }
-
-    if (!profile) {
-      return res.status(404).json({
+        success: false,
         message: "Profile Not Found",
       });
     }
 
     res.status(200).json({
       success: true,
-      profile,
+      message: "Profile updated successfully",
+      profile: updatedProfile,
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -225,74 +185,6 @@ const getProfileByEmployeeId = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
-// ==============================
-// Get Current User Profile
-// ==============================
-const getMyProfile = async (req, res) => {
-  try {
-    const profile = await resolveProfileForUser(req);
-    if (!profile) {
-      return res.status(404).json({
-        success: false,
-        message: "Profile not found for current user",
-      });
-    }
-
-    await profile
-      .populate("departmentId")
-      .populate("designationId")
-      .populate("createdBy");
-
-    return res.status(200).json({
-      success: true,
-      profile,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-// ==============================
-// Update Current User Profile
-// ==============================
-const updateMyProfile = async (req, res) => {
-  try {
-    const profile = await resolveProfileForUser(req);
-    if (!profile) {
-      return res.status(404).json({
-        success: false,
-        message: "Profile not found for current user",
-      });
-    }
-
-    const updatedProfile = await Profile.findByIdAndUpdate(
-      profile._id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    )
-      .populate("departmentId")
-      .populate("designationId")
-      .populate("createdBy");
-
-    return res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      profile: updatedProfile,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
       message: error.message,
     });
   }
@@ -365,8 +257,6 @@ module.exports = {
   updateMyProfile,
   getProfiles,
   getProfileByEmployeeId,
-  getMyProfile,
   updateProfile,
-  updateMyProfile,
   deleteProfile,
 };
