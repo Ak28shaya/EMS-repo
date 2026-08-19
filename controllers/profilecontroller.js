@@ -1,19 +1,30 @@
+const mongoose = require("mongoose");
 const Profile = require("../models/Profile");
 const Employee = require("../models/Employee");
 
+// ==============================
+// Resolve Profile For User
+// ==============================
 const resolveProfileForUser = async (req) => {
   const tokenEmployeeId = req.user?.employeeId;
   const userId = req.user?.id;
   const email = req.user?.email?.toLowerCase?.();
 
   if (tokenEmployeeId) {
-    let profile = await Profile.findOne({ employeeId: tokenEmployeeId });
+    let profile = await Profile.findOne({
+      employeeId: tokenEmployeeId,
+    });
+
     if (profile) return profile;
 
-    if (require("mongoose").Types.ObjectId.isValid(tokenEmployeeId)) {
+    if (mongoose.Types.ObjectId.isValid(tokenEmployeeId)) {
       const employee = await Employee.findById(tokenEmployeeId);
+
       if (employee?.employeeId) {
-        profile = await Profile.findOne({ employeeId: employee.employeeId });
+        profile = await Profile.findOne({
+          employeeId: employee.employeeId,
+        });
+
         if (profile) return profile;
       }
     }
@@ -21,57 +32,94 @@ const resolveProfileForUser = async (req) => {
 
   if (email) {
     const profile = await Profile.findOne({ email });
+
     if (profile) return profile;
   }
 
   if (userId) {
-    const profile = await Profile.findOne({ createdBy: userId });
+    const profile = await Profile.findOne({
+      createdBy: userId,
+    });
+
     if (profile) return profile;
   }
 
   return null;
 };
-const mongoose = require("mongoose");
-const Profile = require("../models/profile");
-const Employee = require("../models/Employee");
 
+// ==============================
+// Resolve Employee Code
+// ==============================
 const resolveEmployeeCode = async (employeeIdToken) => {
   if (!employeeIdToken) return null;
 
   if (mongoose.Types.ObjectId.isValid(employeeIdToken)) {
     const employee = await Employee.findById(employeeIdToken);
+
     if (employee?.employeeId) {
       return employee.employeeId;
     }
   }
 
-  const employeeByCode = await Employee.findOne({ employeeId: employeeIdToken });
+  const employeeByCode = await Employee.findOne({
+    employeeId: employeeIdToken,
+  });
+
   if (employeeByCode?.employeeId) {
     return employeeByCode.employeeId;
   }
 
-  return employeeIdToken?.toString();
+  return employeeIdToken.toString();
 };
 
+// ==============================
+// Populate Profile
+// ==============================
 const populateProfile = (query) =>
-  query.populate("departmentId").populate("designationId").populate("createdBy");
+  query
+    .populate("departmentId")
+    .populate("designationId")
+    .populate("createdBy");
 
+// ==============================
+// Find Profile For Current User
+// ==============================
 const findProfileForCurrentUser = async (req) => {
   const employeeIdFromToken = req.user?.employeeId;
+
   if (employeeIdFromToken) {
-    const resolvedEmployeeId = await resolveEmployeeCode(employeeIdFromToken);
-    let profile = await populateProfile(Profile.findOne({ employeeId: resolvedEmployeeId }));
+    const resolvedEmployeeId = await resolveEmployeeCode(
+      employeeIdFromToken
+    );
+
+    let profile = await populateProfile(
+      Profile.findOne({
+        employeeId: resolvedEmployeeId,
+      })
+    );
+
     if (profile) return profile;
+
     if (mongoose.Types.ObjectId.isValid(employeeIdFromToken)) {
       const employee = await Employee.findById(employeeIdFromToken);
+
       if (employee?.employeeId) {
-        profile = await populateProfile(Profile.findOne({ employeeId: employee.employeeId }));
+        profile = await populateProfile(
+          Profile.findOne({
+            employeeId: employee.employeeId,
+          })
+        );
+
         if (profile) return profile;
       }
     }
   }
 
-  return await populateProfile(Profile.findOne({ createdBy: req.user?.id }));
+  return await populateProfile(
+    Profile.findOne({
+      createdBy: req.user?.id,
+    })
+  );
 };
 
 // ==============================
@@ -83,11 +131,14 @@ const createProfile = async (req, res) => {
       ...req.body,
     };
 
-    if (req.user && req.user.id) {
+    if (req.user?.id) {
       payload.createdBy = req.user.id;
     }
+
     if (!payload.employeeId && req.user?.employeeId) {
-      payload.employeeId = await resolveEmployeeCode(req.user.employeeId);
+      payload.employeeId = await resolveEmployeeCode(
+        req.user.employeeId
+      );
     }
 
     const profile = await Profile.create(payload);
@@ -99,6 +150,7 @@ const createProfile = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -109,10 +161,11 @@ const createProfile = async (req, res) => {
 // ==============================
 const getMyProfile = async (req, res) => {
   try {
-    let profile = await findProfileForCurrentUser(req);
+    const profile = await findProfileForCurrentUser(req);
 
     if (!profile) {
       return res.status(404).json({
+        success: false,
         message: "Profile Not Found",
       });
     }
@@ -123,6 +176,7 @@ const getMyProfile = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -133,46 +187,35 @@ const getMyProfile = async (req, res) => {
 // ==============================
 const updateMyProfile = async (req, res) => {
   try {
-    const employeeId = req.user?.employeeId;
-    if (!employeeId) {
-      return res.status(400).json({
-        message: "Employee ID is required to update profile",
-      });
-    }
-
     const profile = await findProfileForCurrentUser(req);
+
     if (!profile) {
       return res.status(404).json({
+        success: false,
         message: "Profile Not Found",
       });
     }
 
-    const updatedProfile = await Profile.findByIdAndUpdate(profile._id, req.body, {
-      new: true,
-      runValidators: true,
-    })
+    const updatedProfile = await Profile.findByIdAndUpdate(
+      profile._id,
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      }
+    )
       .populate("departmentId")
       .populate("designationId")
       .populate("createdBy");
 
-    if (!updatedProfile) {
-      return res.status(404).json({
-        message: "Profile Not Found",
-      });
-    }
-
-    if (!profile) {
-      return res.status(404).json({
-        message: "Profile Not Found",
-      });
-    }
-
     res.status(200).json({
       success: true,
-      profile,
+      message: "Profile updated successfully",
+      profile: updatedProfile,
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -197,6 +240,7 @@ const getProfiles = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -216,82 +260,17 @@ const getProfileByEmployeeId = async (req, res) => {
 
     if (!profile) {
       return res.status(404).json({
+        success: false,
         message: "Profile Not Found",
       });
     }
 
     res.status(200).json({
+      success: true,
       profile,
     });
   } catch (error) {
     res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
-// ==============================
-// Get Current User Profile
-// ==============================
-const getMyProfile = async (req, res) => {
-  try {
-    const profile = await resolveProfileForUser(req);
-    if (!profile) {
-      return res.status(404).json({
-        success: false,
-        message: "Profile not found for current user",
-      });
-    }
-
-    await profile
-      .populate("departmentId")
-      .populate("designationId")
-      .populate("createdBy");
-
-    return res.status(200).json({
-      success: true,
-      profile,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-// ==============================
-// Update Current User Profile
-// ==============================
-const updateMyProfile = async (req, res) => {
-  try {
-    const profile = await resolveProfileForUser(req);
-    if (!profile) {
-      return res.status(404).json({
-        success: false,
-        message: "Profile not found for current user",
-      });
-    }
-
-    const updatedProfile = await Profile.findByIdAndUpdate(
-      profile._id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    )
-      .populate("departmentId")
-      .populate("designationId")
-      .populate("createdBy");
-
-    return res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      profile: updatedProfile,
-    });
-  } catch (error) {
-    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -304,7 +283,9 @@ const updateMyProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const profile = await Profile.findOneAndUpdate(
-      { employeeId: req.params.employeeId },
+      {
+        employeeId: req.params.employeeId,
+      },
       req.body,
       {
         new: true,
@@ -317,6 +298,7 @@ const updateProfile = async (req, res) => {
 
     if (!profile) {
       return res.status(404).json({
+        success: false,
         message: "Profile Not Found",
       });
     }
@@ -328,6 +310,7 @@ const updateProfile = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -344,6 +327,7 @@ const deleteProfile = async (req, res) => {
 
     if (!profile) {
       return res.status(404).json({
+        success: false,
         message: "Profile Not Found",
       });
     }
@@ -354,19 +338,21 @@ const deleteProfile = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
 };
 
+// ==============================
+// Exports
+// ==============================
 module.exports = {
   createProfile,
-  getMyProfile,
-  updateMyProfile,
   getProfiles,
   getProfileByEmployeeId,
   getMyProfile,
-  updateProfile,
   updateMyProfile,
+  updateProfile,
   deleteProfile,
 };
