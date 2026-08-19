@@ -56,7 +56,13 @@ const createPayroll = async (req, res) => {
 const getPayrolls = async (req, res) => {
   try {
     const payrolls = await Payroll.find()
-      .populate("employeeId")
+      .populate({
+        path: "employeeId",
+        populate: [
+          { path: "departmentId" },
+          { path: "designationId" }
+        ]
+      })
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -84,7 +90,13 @@ const getMyPayrolls = async (req, res) => {
     }
 
     const payrolls = await Payroll.find({ employeeId: tokenEmployeeId })
-      .populate("employeeId")
+      .populate({
+        path: "employeeId",
+        populate: [
+          { path: "departmentId" },
+          { path: "designationId" }
+        ]
+      })
       .sort({ createdAt: -1 });
 
     res.status(200).json({

@@ -94,8 +94,19 @@ const createLeave = async (req, res) => {
       reason,
     });
 
+    try {
+      const Notification = require("../models/Notification");
+      await Notification.create({
+        recipientType: "Admin",
+        title: "New Leave Application",
+        message: `${employee.firstName} ${employee.lastName} requested ${leaveType} leave for ${totalDays} day(s) (${fromDate} to ${toDate}).`,
+        type: "leave_applied",
+      });
+    } catch (notifErr) {
+      console.warn("Failed to create admin notification:", notifErr);
+    }
+
     res.status(201).json({
-      success: true,
       success: true,
       message: "Leave Applied Successfully",
       leave,
@@ -187,8 +198,29 @@ const updateLeave = async (req, res) => {
       }
     ).populate("employeeId");
 
+    if (req.body.status && req.body.status !== leave.status) {
+      try {
+        const Notification = require("../models/Notification");
+        const statusText = req.body.status;
+        const notifType = statusText === "Approved" ? "leave_approved" : statusText === "Rejected" ? "leave_rejected" : "general";
+
+        const empName = updatedLeave.employeeId
+          ? `${updatedLeave.employeeId.firstName || ""} ${updatedLeave.employeeId.lastName || ""}`.trim()
+          : "Employee";
+
+        await Notification.create({
+          recipientType: "Employee",
+          employeeId: updatedLeave.employeeId?._id || updatedLeave.employeeId,
+          title: `Leave Request ${statusText}`,
+          message: `Your ${updatedLeave.leaveType} leave request from ${new Date(updatedLeave.fromDate).toISOString().split('T')[0]} to ${new Date(updatedLeave.toDate).toISOString().split('T')[0]} has been ${statusText.toLowerCase()} by Admin.`,
+          type: notifType,
+        });
+      } catch (notifErr) {
+        console.warn("Failed to create employee notification:", notifErr);
+      }
+    }
+
     res.status(200).json({
-      success: true,
       success: true,
       message: "Leave Updated Successfully",
       leave: updatedLeave,

@@ -37,7 +37,12 @@ const authMiddleware = async (req, res, next) => {
         }
 
         if (!employeeIdFromToken) {
-            let employee = await Employee.findOne({ email: user.email });
+            let employee = null;
+            if (user.email) {
+                employee = await Employee.findOne({
+                    email: { $regex: `^${user.email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" }
+                });
+            }
             if (!employee) {
                 const profile = await Profile.findOne({ createdBy: user._id });
                 if (profile?.employeeId) {
