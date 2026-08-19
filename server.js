@@ -17,6 +17,7 @@ const settingsRoutes = require("./routes/settingsRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const leaveRoutes = require("./routes/leaveRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();
 
@@ -52,6 +53,8 @@ app.use("/leaves", leaveRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/employeedashboard", employeeDashboardRoutes);
 app.use("/api/employeedashboard", employeeDashboardRoutes);
+app.use("/notifications", notificationRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Home Route
 app.get("/", (req, res) => {

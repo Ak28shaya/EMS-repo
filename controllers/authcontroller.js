@@ -19,7 +19,9 @@ const resolveEmployeeIdForUser = async (user) => {
 
   let employee = null;
   if (email) {
-    employee = await Employee.findOne({ email });
+    employee = await Employee.findOne({
+      email: { $regex: `^${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" }
+    });
   }
 
   if (!employee) {
@@ -51,7 +53,7 @@ const register = async (req, res) => {
       });
     }
 
-    const roleDoc = await Role.findOne({ name: role.toLowerCase() });
+    const roleDoc = await resolveRoleDocument(role);
 
     if (!roleDoc) {
       return res.status(404).json({

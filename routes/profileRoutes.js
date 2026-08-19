@@ -1,9 +1,7 @@
 const express = require("express");
-
 const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
-
 const {
   createProfile,
   getProfiles,
@@ -22,8 +20,6 @@ router.get("/", authMiddleware, getProfiles);
 
 // Get Current User Profile
 router.get("/me", authMiddleware, getMyProfile);
-
-// Update Current User Profile
 router.put("/me", authMiddleware, updateMyProfile);
 
 // Get Profile By Employee ID

@@ -13,46 +13,50 @@ const Role = require("../models/Role");
 // ============================
 const getAdminDashboard = async (req, res) => {
   try {
-    const totalEmployees = await Employee.countDocuments();
-    const totalDepartments = await Department.countDocuments();
-    const totalDesignations = await Designation.countDocuments();
-    const totalNotices = await Notice.countDocuments();
-    const totalPayrolls = await Payroll.countDocuments();
-
-    const managerRole = await Role.findOne({ name: "manager" });
-
-    const totalManagers = managerRole
-      ? await User.countDocuments({ role: managerRole._id })
-      : 0;
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 
-    const presentToday = await Attendance.countDocuments({
-      attendanceDate: { $gte: today, $lt: tomorrow },
-      status: "Present",
-    });
+    const [
+      totalEmployees,
+      totalDepartments,
+      totalDesignations,
+      totalNotices,
+      totalPayrolls,
+      managerRole,
+      presentToday,
+      absentToday,
+      leaveToday,
+      recentEmployees,
+      recentNotices,
+    ] = await Promise.all([
+      Employee.countDocuments().lean(),
+      Department.countDocuments().lean(),
+      Designation.countDocuments().lean(),
+      Notice.countDocuments().lean(),
+      Payroll.countDocuments().lean(),
+      Role.findOne({ name: { $regex: "^manager$", $options: "i" } }).lean(),
+      Attendance.countDocuments({
+        attendanceDate: { $gte: today, $lt: tomorrow },
+        status: "Present",
+      }).lean(),
+      Attendance.countDocuments({
+        attendanceDate: { $gte: today, $lt: tomorrow },
+        status: "Absent",
+      }).lean(),
+      Attendance.countDocuments({
+        attendanceDate: { $gte: today, $lt: tomorrow },
+        status: "Leave",
+      }).lean(),
+      Employee.find().sort({ createdAt: -1 }).limit(5).lean(),
+      Notice.find().sort({ createdAt: -1 }).limit(5).lean(),
+    ]);
 
-    const absentToday = await Attendance.countDocuments({
-      attendanceDate: { $gte: today, $lt: tomorrow },
-      status: "Absent",
-    });
-
-    const leaveToday = await Attendance.countDocuments({
-      attendanceDate: { $gte: today, $lt: tomorrow },
-      status: "Leave",
-    });
-
-    const recentEmployees = await Employee.find()
-      .sort({ createdAt: -1 })
-      .limit(5);
-
-    const recentNotices = await Notice.find()
-      .sort({ createdAt: -1 })
-      .limit(5);
+    const totalManagers = managerRole
+      ? await User.countDocuments({ role: managerRole._id }).lean()
+      : 0;
 
     res.status(200).json({
       success: true,
@@ -127,22 +131,37 @@ const getEmployeeDashboard = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 
-    const todayAttendance = await Attendance.findOne({
-      employeeId: employee._id,
-      attendanceDate: {
-        $gte: today,
-        $lt: tomorrow,
-      },
-    });
+    const Leave = require("../models/Leave");
 
-    const recentNotices = await Notice.find()
-      .sort({ createdAt: -1 })
-      .limit(5);
+    const [todayAttendance, recentNotices, approvedLeaves] = await Promise.all([
+      Attendance.findOne({
+        employeeId: employee._id,
+        attendanceDate: {
+          $gte: today,
+          $lt: tomorrow,
+        },
+      }).lean(),
+      Notice.find().sort({ createdAt: -1 }).limit(5).lean(),
+      Leave.find({ employeeId: employee._id, status: "Approved" }).lean(),
+    ]);
+
+    const leaveDaysTaken = approvedLeaves.reduce((sum, l) => sum + (l.totalDays || 1), 0);
+    const leaveBalance = Math.max(0, 18 - leaveDaysTaken);
+
+    const employeeObj = employee.toObject ? employee.toObject() : employee;
+    const employeeProfile = {
+      ...employeeObj,
+      designationName: employee.designationId?.designationName || "Staff Member",
+      departmentName: employee.departmentId?.departmentName || "General",
+      salary: employee.salary || 0,
+      leaveBalance: leaveBalance,
+    };
 
     res.status(200).json({
       success: true,
       dashboard: {
         employee,
+        employeeProfile,
         todayAttendance,
         recentNotices,
       },
