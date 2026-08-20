@@ -1,4 +1,4 @@
-const Payroll = require("../models/Payroll");
+const Payroll = require("../models/payroll");
 
 // ==============================
 // Create Payroll

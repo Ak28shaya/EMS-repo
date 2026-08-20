@@ -1,12 +1,12 @@
 const mongoose = require("mongoose");
-const Employee = require("../models/Employee");
-const Department = require("../models/Department");
-const Designation = require("../models/Designation");
-const Attendance = require("../models/Attendance");
-const Notice = require("../models/Notice");
-const Payroll = require("../models/Payroll");
-const User = require("../models/User");
-const Role = require("../models/Role");
+const Employee = require("../models/employee");
+const Department = require("../models/department");
+const Designation = require("../models/designation");
+const Attendance = require("../models/attendance");
+const Notice = require("../models/notice");
+const Payroll = require("../models/payroll");
+const User = require("../models/user");
+const Role = require("../models/role");
 
 // ============================
 // Admin Dashboard
@@ -131,7 +131,7 @@ const getEmployeeDashboard = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 
-    const Leave = require("../models/Leave");
+    const Leave = require("../models/leave");
 
     const [todayAttendance, recentNotices, approvedLeaves] = await Promise.all([
       Attendance.findOne({

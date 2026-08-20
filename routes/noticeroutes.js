@@ -7,7 +7,7 @@ const {
   getNoticeById,
   updateNotice,
   deleteNotice,
-} = require("../controllers/noticeController");
+} = require("../controllers/noticecontroller");
 
 router.post("/", createNotice);
 router.get("/", getNotices);

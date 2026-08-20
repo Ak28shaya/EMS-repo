@@ -1,5 +1,5 @@
-const Notification = require("../models/Notification");
-const Employee = require("../models/Employee");
+const Notification = require("../models/notification");
+const Employee = require("../models/employee");
 
 // Get notifications for current user (Admin or Employee)
 const getMyNotifications = async (req, res) => {
