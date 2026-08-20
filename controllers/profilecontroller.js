@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
-const Profile = require("../models/Profile");
-const Employee = require("../models/Employee");
+const Profile = require("../models/profile");
+const Employee = require("../models/employee");
 
 const resolveEmployeeCode = async (employeeIdToken) => {
   if (!employeeIdToken) return null;

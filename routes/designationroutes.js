@@ -7,7 +7,7 @@ const {
   getDesignationById,
   updateDesignation,
   deleteDesignation,
-} = require("../controllers/designationController");
+} = require("../controllers/designationcontroller");
 
 // Create Designation
 router.post("/", createDesignation);

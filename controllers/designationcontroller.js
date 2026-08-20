@@ -1,4 +1,4 @@
-const Designation = require("../models/Designation");
+const Designation = require("../models/designation");
 
 // ==========================
 // Create Designation

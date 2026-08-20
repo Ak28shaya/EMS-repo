@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
-const User = require("../models/User");
-const Employee = require("../models/Employee");
-const Role = require("../models/Role");
+const User = require("../models/user");
+const Employee = require("../models/employee");
+const Role = require("../models/role");
 const Profile = require("../models/profile");
 const bcrypt = require("bcrypt");
 const { generateToken } = require("../config/jwt");
