@@ -14,7 +14,7 @@ const authMiddleware = async (req, res, next) => {
                 message: "Access Denied. Token not provided."
             });
         }
-
+ 
         if (!authHeader.startsWith("Bearer ")) {
             return res.status(401).json({
                 success: false,
