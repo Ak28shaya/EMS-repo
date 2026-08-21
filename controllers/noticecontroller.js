@@ -1,4 +1,4 @@
-const Notice = require("../models/Notice");
+const Notice = require("../models/notice");
 
 // ==============================
 // Create Notice

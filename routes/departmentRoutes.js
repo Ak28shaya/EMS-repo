@@ -8,7 +8,7 @@ const {
   updateDepartment,
   deleteDepartment,
   getDepartmentEmployees,
-} = require("../controllers/departmentController");
+} = require("../controllers/departmentcontroller");
 
 router.post("/", createDepartment);
 

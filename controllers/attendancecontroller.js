@@ -1,5 +1,5 @@
-const Attendance = require("../models/Attendance");
-const Employee = require("../models/Employee");
+const Attendance = require("../models/attendance");
+const Employee = require("../models/employee");
 const Profile = require("../models/profile");
 const mongoose = require("mongoose");
 

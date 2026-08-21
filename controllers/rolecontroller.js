@@ -1,5 +1,5 @@
-const Role = require("../models/Role");
-const User = require("../models/User");
+const Role = require("../models/role");
+const User = require("../models/user");
 
 const normalizeRoleName = (value) => {
   if (value === undefined || value === null) return "";

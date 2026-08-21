@@ -10,7 +10,7 @@ const {
   updateLeave,
   deleteLeave,
   getMyLeaves,
-} = require("../controllers/leaveController");
+} = require("../controllers/leavecontroller");
 
 // Protected leave routes
 router.post("/", authMiddleware, createLeave);

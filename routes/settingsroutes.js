@@ -10,7 +10,7 @@ const {
   createSettings,
   getSettings,
   updateSettings,
-} = require("../controllers/settingsController");
+} = require("../controllers/settingscontroller");
 
 const allowed = ROLE_PERMISSIONS.getAllowedRoleVariants("settings");
 

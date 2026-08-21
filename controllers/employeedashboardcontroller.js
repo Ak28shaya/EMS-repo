@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
-const Employee = require("../models/Employee");
-const Attendance = require("../models/Attendance");
-const Leave = require("../models/Leave");
-const Payroll = require("../models/Payroll");
+const Employee = require("../models/employee");
+const Attendance = require("../models/attendance");
+const Leave = require("../models/leave");
+const Payroll = require("../models/payroll");
 const Notice = require("../models/notice");
 const Profile = require("../models/profile");
 
