@@ -54,7 +54,6 @@ const employeeDashboardSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model(
-  "EmployeeDashboard",
-  employeeDashboardSchema
-);
+module.exports =
+  mongoose.models.EmployeeDashboard ||
+  mongoose.model("EmployeeDashboard", employeeDashboardSchema);

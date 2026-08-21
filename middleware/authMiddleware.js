@@ -1,6 +1,6 @@
 const { verifyToken } = require("../config/jwt");
-const User = require("../models/User");
-const Employee = require("../models/Employee");
+const User = require("../models/user");
+const Employee = require("../models/employee");
 const Profile = require("../models/profile");
 
 const authMiddleware = async (req, res, next) => {
