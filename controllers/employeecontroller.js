@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Employee = require("../models/employee");
 
 // ==========================
@@ -125,10 +126,22 @@ const getEmployees = async (req, res) => {
 // ==========================
 const getEmployeeById = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id)
-      .populate("departmentId", "departmentName")
-      .populate("designationId", "designationName")
-      .populate("createdBy", "name email");
+    const { id } = req.params;
+    let employee = null;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      employee = await Employee.findById(id)
+        .populate("departmentId", "departmentName")
+        .populate("designationId", "designationName")
+        .populate("createdBy", "name email");
+    }
+
+    if (!employee) {
+      employee = await Employee.findOne({ employeeId: id })
+        .populate("departmentId", "departmentName")
+        .populate("designationId", "designationName")
+        .populate("createdBy", "name email");
+    }
 
     if (!employee) {
       return res.status(404).json({
@@ -152,7 +165,15 @@ const getEmployeeById = async (req, res) => {
 // ==========================
 const updateEmployee = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id);
+    const { id } = req.params;
+    let employee = null;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      employee = await Employee.findById(id);
+    }
+    if (!employee) {
+      employee = await Employee.findOne({ employeeId: id });
+    }
 
     if (!employee) {
       return res.status(404).json({
@@ -161,7 +182,7 @@ const updateEmployee = async (req, res) => {
     }
 
     const updatedEmployee = await Employee.findByIdAndUpdate(
-      req.params.id,
+      employee._id,
       req.body,
       {
         new: true,
@@ -188,7 +209,15 @@ const updateEmployee = async (req, res) => {
 // ==========================
 const deleteEmployee = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id);
+    const { id } = req.params;
+    let employee = null;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      employee = await Employee.findById(id);
+    }
+    if (!employee) {
+      employee = await Employee.findOne({ employeeId: id });
+    }
 
     if (!employee) {
       return res.status(404).json({
@@ -196,7 +225,7 @@ const deleteEmployee = async (req, res) => {
       });
     }
 
-    await Employee.findByIdAndDelete(req.params.id);
+    await Employee.findByIdAndDelete(employee._id);
 
     res.status(200).json({
       message: "Employee Deleted Successfully",
