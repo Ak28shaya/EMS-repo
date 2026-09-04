@@ -38,6 +38,17 @@ const attendanceSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+
+    // Soft Delete Fields
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

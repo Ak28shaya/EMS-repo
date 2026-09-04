@@ -3,37 +3,62 @@ const Leave = require("../models/leave");
 const Employee = require("../models/employee");
 const Profile = require("../models/profile");
 
+// ==========================
+// Resolve Employee for Leave
+// ==========================
 const resolveEmployeeForLeave = async (req) => {
   const bodyEmployeeId = req.body.employeeId;
+
   if (bodyEmployeeId) {
     if (mongoose.Types.ObjectId.isValid(bodyEmployeeId)) {
       const employee = await Employee.findById(bodyEmployeeId);
+
       if (employee) return employee;
     }
-    const employeeByCode = await Employee.findOne({ employeeId: bodyEmployeeId });
+
+    const employeeByCode = await Employee.findOne({
+      employeeId: bodyEmployeeId,
+    });
+
     if (employeeByCode) return employeeByCode;
   }
 
   const tokenEmployeeId = req.user?.employeeId;
+
   if (tokenEmployeeId) {
     if (mongoose.Types.ObjectId.isValid(tokenEmployeeId)) {
       const employee = await Employee.findById(tokenEmployeeId);
+
       if (employee) return employee;
     }
-    const employeeByCode = await Employee.findOne({ employeeId: tokenEmployeeId });
+
+    const employeeByCode = await Employee.findOne({
+      employeeId: tokenEmployeeId,
+    });
+
     if (employeeByCode) return employeeByCode;
   }
 
   const email = req.user?.email;
+
   if (email) {
-    const employeeByEmail = await Employee.findOne({ email });
+    const employeeByEmail = await Employee.findOne({
+      email,
+    });
+
     if (employeeByEmail) return employeeByEmail;
   }
 
   if (req.user?.id) {
-    const profile = await Profile.findOne({ createdBy: req.user.id });
+    const profile = await Profile.findOne({
+      createdBy: req.user.id,
+    });
+
     if (profile?.employeeId) {
-      const employeeByProfile = await Employee.findOne({ employeeId: profile.employeeId });
+      const employeeByProfile = await Employee.findOne({
+        employeeId: profile.employeeId,
+      });
+
       if (employeeByProfile) return employeeByProfile;
     }
   }
@@ -60,7 +85,8 @@ const createLeave = async (req, res) => {
     if (!leaveType || !fromDate || !toDate || !reason) {
       return res.status(400).json({
         success: false,
-        message: "Leave type, start date, end date and reason are required",
+        message:
+          "Leave type, start date, end date and reason are required",
       });
     }
 
@@ -72,6 +98,7 @@ const createLeave = async (req, res) => {
     }
 
     const employee = await resolveEmployeeForLeave(req);
+
     if (!employee) {
       return res.status(400).json({
         success: false,
@@ -94,8 +121,10 @@ const createLeave = async (req, res) => {
       reason,
     });
 
+    // Create notification
     try {
-      const Notification = require("../models/notification");
+      const Notification = require("../models/Notification");
+
       await Notification.create({
         recipientType: "Admin",
         title: "New Leave Application",
@@ -103,16 +132,21 @@ const createLeave = async (req, res) => {
         type: "leave_applied",
       });
     } catch (notifErr) {
-      console.warn("Failed to create admin notification:", notifErr);
+      console.warn(
+        "Failed to create admin notification:",
+        notifErr
+      );
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Leave Applied Successfully",
       leave,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Create Leave Error:", error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -120,24 +154,26 @@ const createLeave = async (req, res) => {
 };
 
 // ==========================
-// Get All Leaves
+// Get All Active Leaves
 // ==========================
 const getLeaves = async (req, res) => {
   try {
-    const leaves = await Leave.find()
+    const leaves = await Leave.find({
+      isDeleted: false,
+    })
       .populate("employeeId")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({
-      success: true,
+    return res.status(200).json({
       success: true,
       message: "Leave List",
       count: leaves.length,
       leaves,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
+    console.error("Get Leaves Error:", error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -149,25 +185,26 @@ const getLeaves = async (req, res) => {
 // ==========================
 const getLeaveById = async (req, res) => {
   try {
-    const leave = await Leave.findById(req.params.id)
-      .populate("employeeId");
+    const leave = await Leave.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    }).populate("employeeId");
 
     if (!leave) {
       return res.status(404).json({
-        success: false,
         success: false,
         message: "Leave Not Found",
       });
     }
 
-    res.status(200).json({
-      success: true,
+    return res.status(200).json({
       success: true,
       leave,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
+    console.error("Get Leave By ID Error:", error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -179,18 +216,23 @@ const getLeaveById = async (req, res) => {
 // ==========================
 const updateLeave = async (req, res) => {
   try {
-    const leave = await Leave.findById(req.params.id);
+    const leave = await Leave.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!leave) {
       return res.status(404).json({
-        success: false,
         success: false,
         message: "Leave Not Found",
       });
     }
 
-    const updatedLeave = await Leave.findByIdAndUpdate(
-      req.params.id,
+    const updatedLeave = await Leave.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isDeleted: false,
+      },
       req.body,
       {
         new: true,
@@ -198,36 +240,65 @@ const updateLeave = async (req, res) => {
       }
     ).populate("employeeId");
 
-    if (req.body.status && req.body.status !== leave.status) {
+    // Create notification when leave status changes
+    if (
+      req.body.status &&
+      req.body.status !== leave.status
+    ) {
       try {
-        const Notification = require("../models/notification");
+        const Notification = require("../models/Notification");
+
         const statusText = req.body.status;
-        const notifType = statusText === "Approved" ? "leave_approved" : statusText === "Rejected" ? "leave_rejected" : "general";
+
+        const notifType =
+          statusText === "Approved"
+            ? "leave_approved"
+            : statusText === "Rejected"
+            ? "leave_rejected"
+            : "general";
 
         const empName = updatedLeave.employeeId
-          ? `${updatedLeave.employeeId.firstName || ""} ${updatedLeave.employeeId.lastName || ""}`.trim()
+          ? `${updatedLeave.employeeId.firstName || ""} ${
+              updatedLeave.employeeId.lastName || ""
+            }`.trim()
           : "Employee";
 
         await Notification.create({
           recipientType: "Employee",
-          employeeId: updatedLeave.employeeId?._id || updatedLeave.employeeId,
+          employeeId:
+            updatedLeave.employeeId?._id ||
+            updatedLeave.employeeId,
           title: `Leave Request ${statusText}`,
-          message: `Your ${updatedLeave.leaveType} leave request from ${new Date(updatedLeave.fromDate).toISOString().split('T')[0]} to ${new Date(updatedLeave.toDate).toISOString().split('T')[0]} has been ${statusText.toLowerCase()} by Admin.`,
+          message: `Your ${
+            updatedLeave.leaveType
+          } leave request from ${new Date(
+            updatedLeave.fromDate
+          )
+            .toISOString()
+            .split("T")[0]} to ${new Date(
+            updatedLeave.toDate
+          )
+            .toISOString()
+            .split("T")[0]} has been ${statusText.toLowerCase()} by Admin.`,
           type: notifType,
         });
       } catch (notifErr) {
-        console.warn("Failed to create employee notification:", notifErr);
+        console.warn(
+          "Failed to create employee notification:",
+          notifErr
+        );
       }
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Leave Updated Successfully",
       leave: updatedLeave,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
+    console.error("Update Leave Error:", error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -235,65 +306,112 @@ const updateLeave = async (req, res) => {
 };
 
 // ==========================
-// Delete Leave
+// Soft Delete Leave
 // ==========================
 const deleteLeave = async (req, res) => {
   try {
-    const leave = await Leave.findById(req.params.id);
+    console.log("🔥 SOFT DELETE LEAVE CALLED");
+
+    const leave = await Leave.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!leave) {
       return res.status(404).json({
-        success: false,
         success: false,
         message: "Leave Not Found",
       });
     }
 
-    await Leave.findByIdAndDelete(req.params.id);
+    // Soft delete instead of permanently deleting
+    await Leave.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isDeleted: false,
+      },
+      {
+        isDeleted: true,
+        deletedAt: new Date(),
+      }
+    );
 
-    res.status(200).json({
-      success: true,
+    return res.status(200).json({
       success: true,
       message: "Leave Deleted Successfully",
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
+    console.error("Soft Delete Leave Error:", error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
 
-// Get leaves for the currently authenticated user
+// ==========================
+// Get My Active Leaves
+// ==========================
 const getMyLeaves = async (req, res) => {
   try {
     const tokenEmployeeId = req.user?.employeeId;
 
     if (!tokenEmployeeId) {
-      return res.status(400).json({ success: false, message: "Employee identifier missing in token." });
+      return res.status(400).json({
+        success: false,
+        message: "Employee identifier missing in token.",
+      });
     }
 
     let employee = null;
-    const mongoose = require("mongoose");
+
     if (mongoose.Types.ObjectId.isValid(tokenEmployeeId)) {
-      employee = await Employee.findById(tokenEmployeeId).select("_id employeeId firstName lastName email");
+      employee = await Employee.findById(
+        tokenEmployeeId
+      ).select(
+        "_id employeeId firstName lastName email"
+      );
     } else {
-      employee = await Employee.findOne({ employeeId: tokenEmployeeId }).select("_id employeeId firstName lastName email");
+      employee = await Employee.findOne({
+        employeeId: tokenEmployeeId,
+      }).select(
+        "_id employeeId firstName lastName email"
+      );
     }
 
     if (!employee) {
-      return res.status(404).json({ success: false, message: "Employee not found for current user." });
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found for current user.",
+      });
     }
 
-    const leaves = await Leave.find({ employeeId: employee._id }).populate("employeeId").sort({ createdAt: -1 });
+    const leaves = await Leave.find({
+      employeeId: employee._id,
+      isDeleted: false,
+    })
+      .populate("employeeId")
+      .sort({ createdAt: -1 });
 
-    return res.status(200).json({ success: true, count: leaves.length, leaves });
+    return res.status(200).json({
+      success: true,
+      count: leaves.length,
+      leaves,
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    console.error("Get My Leaves Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+// ==========================
+// Export Controllers
+// ==========================
 module.exports = {
   createLeave,
   getLeaves,

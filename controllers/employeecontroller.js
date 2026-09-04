@@ -68,7 +68,11 @@ const createEmployee = async (req, res) => {
     if (!createdBy)
       return res.status(400).json({ message: "Created By is required" });
 
-    const existingEmployee = await Employee.findOne({ employeeId });
+    // Check only active employees
+    const existingEmployee = await Employee.findOne({
+      employeeId,
+      isDeleted: false,
+    });
 
     if (existingEmployee) {
       return res.status(409).json({
@@ -76,7 +80,11 @@ const createEmployee = async (req, res) => {
       });
     }
 
-    const existingEmail = await Employee.findOne({ email });
+    // Check only active employees
+    const existingEmail = await Employee.findOne({
+      email,
+      isDeleted: false,
+    });
 
     if (existingEmail) {
       return res.status(409).json({
@@ -98,11 +106,13 @@ const createEmployee = async (req, res) => {
 };
 
 // ==========================
-// Get All Employees
+// Get All Active Employees
 // ==========================
 const getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find()
+    const employees = await Employee.find({
+      isDeleted: false,
+    })
       .populate("departmentId", "departmentName")
       .populate("designationId", "designationName")
       .populate("createdBy", "name email")
@@ -125,7 +135,10 @@ const getEmployees = async (req, res) => {
 // ==========================
 const getEmployeeById = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id)
+    const employee = await Employee.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    })
       .populate("departmentId", "departmentName")
       .populate("designationId", "designationName")
       .populate("createdBy", "name email");
@@ -152,7 +165,10 @@ const getEmployeeById = async (req, res) => {
 // ==========================
 const updateEmployee = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!employee) {
       return res.status(404).json({
@@ -160,8 +176,41 @@ const updateEmployee = async (req, res) => {
       });
     }
 
-    const updatedEmployee = await Employee.findByIdAndUpdate(
-      req.params.id,
+    // Prevent duplicate Employee ID
+    if (req.body.employeeId) {
+      const existingEmployee = await Employee.findOne({
+        employeeId: req.body.employeeId,
+        _id: { $ne: req.params.id },
+        isDeleted: false,
+      });
+
+      if (existingEmployee) {
+        return res.status(409).json({
+          message: "Employee ID already exists",
+        });
+      }
+    }
+
+    // Prevent duplicate Email
+    if (req.body.email) {
+      const existingEmail = await Employee.findOne({
+        email: req.body.email,
+        _id: { $ne: req.params.id },
+        isDeleted: false,
+      });
+
+      if (existingEmail) {
+        return res.status(409).json({
+          message: "Email already exists",
+        });
+      }
+    }
+
+    const updatedEmployee = await Employee.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isDeleted: false,
+      },
       req.body,
       {
         new: true,
@@ -184,11 +233,16 @@ const updateEmployee = async (req, res) => {
 };
 
 // ==========================
-// Delete Employee
+// Soft Delete Employee
 // ==========================
 const deleteEmployee = async (req, res) => {
+  console.log("🔥 SOFT DELETE EMPLOYEE CALLED");
+
   try {
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!employee) {
       return res.status(404).json({
@@ -196,12 +250,18 @@ const deleteEmployee = async (req, res) => {
       });
     }
 
-    await Employee.findByIdAndDelete(req.params.id);
+    // Soft delete instead of permanently deleting
+    await Employee.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    });
 
     res.status(200).json({
       message: "Employee Deleted Successfully",
     });
   } catch (error) {
+    console.error("Delete Employee Error:", error);
+
     res.status(500).json({
       message: error.message,
     });

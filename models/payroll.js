@@ -57,6 +57,16 @@ const payrollSchema = new mongoose.Schema(
     paymentDate: {
       type: Date,
     },
+    // Soft Delete Fields
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

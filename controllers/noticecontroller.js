@@ -31,11 +31,13 @@ const createNotice = async (req, res) => {
 };
 
 // ==============================
-// Get All Notices
+// Get All Active Notices
 // ==============================
 const getNotices = async (req, res) => {
   try {
-    const notices = await Notice.find()
+    const notices = await Notice.find({
+      isDeleted: false,
+    })
       .populate("postedBy")
       .sort({ createdAt: -1 });
 
@@ -56,7 +58,10 @@ const getNotices = async (req, res) => {
 // ==============================
 const getNoticeById = async (req, res) => {
   try {
-    const notice = await Notice.findById(req.params.id).populate("postedBy");
+    const notice = await Notice.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    }).populate("postedBy");
 
     if (!notice) {
       return res.status(404).json({
@@ -79,7 +84,10 @@ const getNoticeById = async (req, res) => {
 // ==============================
 const updateNotice = async (req, res) => {
   try {
-    const notice = await Notice.findById(req.params.id);
+    const notice = await Notice.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!notice) {
       return res.status(404).json({
@@ -87,8 +95,11 @@ const updateNotice = async (req, res) => {
       });
     }
 
-    const updatedNotice = await Notice.findByIdAndUpdate(
-      req.params.id,
+    const updatedNotice = await Notice.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isDeleted: false,
+      },
       req.body,
       {
         new: true,
@@ -108,11 +119,16 @@ const updateNotice = async (req, res) => {
 };
 
 // ==============================
-// Delete Notice
+// Soft Delete Notice
 // ==============================
 const deleteNotice = async (req, res) => {
   try {
-    const notice = await Notice.findById(req.params.id);
+    console.log("🔥 SOFT DELETE NOTICE CALLED");
+
+    const notice = await Notice.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!notice) {
       return res.status(404).json({
@@ -120,12 +136,24 @@ const deleteNotice = async (req, res) => {
       });
     }
 
-    await Notice.findByIdAndDelete(req.params.id);
+    // Soft delete instead of permanently deleting
+    await Notice.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isDeleted: false,
+      },
+      {
+        isDeleted: true,
+        deletedAt: new Date(),
+      }
+    );
 
     res.status(200).json({
       message: "Notice Deleted Successfully",
     });
   } catch (error) {
+    console.error("Soft Delete Notice Error:", error);
+
     res.status(500).json({
       message: error.message,
     });
