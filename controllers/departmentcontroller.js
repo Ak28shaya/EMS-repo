@@ -1,6 +1,7 @@
 const Department = require("../models/department");
 const Employee = require("../models/employee");
 
+
 // Create Department
 const createDepartment = async (req, res) => {
   try {
@@ -24,7 +25,10 @@ const createDepartment = async (req, res) => {
       });
     }
 
-    const existingDepartment = await Department.findOne({ departmentName });
+    const existingDepartment = await Department.findOne({
+      departmentName,
+      isDeleted: false,
+    });
 
     if (existingDepartment) {
       return res.status(409).json({
@@ -51,10 +55,12 @@ const createDepartment = async (req, res) => {
   }
 };
 
-// Get All Departments
+// Get All Active Departments
 const getDepartments = async (req, res) => {
   try {
-    const departments = await Department.find().sort({ createdAt: -1 });
+    const departments = await Department.find({
+      isDeleted: false,
+    }).sort({ createdAt: -1 });
 
     res.status(200).json({
       count: departments.length,
@@ -70,7 +76,10 @@ const getDepartments = async (req, res) => {
 // Get Department By ID
 const getDepartmentById = async (req, res) => {
   try {
-    const department = await Department.findById(req.params.id);
+    const department = await Department.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!department) {
       return res.status(404).json({
@@ -99,7 +108,10 @@ const updateDepartment = async (req, res) => {
       employeeCount,
     } = req.body;
 
-    const department = await Department.findById(req.params.id);
+    const department = await Department.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!department) {
       return res.status(404).json({
@@ -110,6 +122,7 @@ const updateDepartment = async (req, res) => {
     const existingDepartment = await Department.findOne({
       departmentName,
       _id: { $ne: req.params.id },
+      isDeleted: false,
     });
 
     if (existingDepartment) {
@@ -118,8 +131,11 @@ const updateDepartment = async (req, res) => {
       });
     }
 
-    const updatedDepartment = await Department.findByIdAndUpdate(
-      req.params.id,
+    const updatedDepartment = await Department.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isDeleted: false,
+      },
       {
         departmentName,
         description,
@@ -144,10 +160,14 @@ const updateDepartment = async (req, res) => {
   }
 };
 
-// Delete Department
+// Soft Delete Department
 const deleteDepartment = async (req, res) => {
+  console.log("🔥 SOFT DELETE DEPARTMENT CALLED");
   try {
-    const department = await Department.findById(req.params.id);
+    const department = await Department.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!department) {
       return res.status(404).json({
@@ -155,7 +175,11 @@ const deleteDepartment = async (req, res) => {
       });
     }
 
-    await Department.findByIdAndDelete(req.params.id);
+    // Soft delete instead of permanently deleting
+    await Department.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    });
 
     res.status(200).json({
       message: "Department Deleted Successfully",
@@ -166,22 +190,35 @@ const deleteDepartment = async (req, res) => {
     });
   }
 };
+
 // Get Employees for a Department
 const getDepartmentEmployees = async (req, res) => {
   try {
     const { departmentId } = req.params;
 
-    // Validate department exists (optional)
-    const department = await Department.findById(departmentId);
+    // Only allow employees from an active department
+    const department = await Department.findOne({
+      _id: departmentId,
+      isDeleted: false,
+    });
+
     if (!department) {
-      return res.status(404).json({ message: "Department Not Found" });
+      return res.status(404).json({
+        message: "Department Not Found",
+      });
     }
 
-    const employees = await Employee.find({ departmentId }).populate("designationId");
+    const employees = await Employee.find({
+      departmentId,
+    }).populate("designationId");
 
-    res.status(200).json({ employees });
+    res.status(200).json({
+      employees,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 

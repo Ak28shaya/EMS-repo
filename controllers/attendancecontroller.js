@@ -12,6 +12,9 @@ const attendanceEmployeePopulate = {
   },
 };
 
+// ==========================================
+// Create Attendance
+// ==========================================
 const createAttendance = async (req, res) => {
   try {
     const {
@@ -24,7 +27,6 @@ const createAttendance = async (req, res) => {
       notes,
     } = req.body;
 
-    // Required validation
     if (!employeeId) {
       return res.status(400).json({
         success: false,
@@ -46,7 +48,6 @@ const createAttendance = async (req, res) => {
       });
     }
 
-    // Validate status
     const validStatus = [
       "Present",
       "Absent",
@@ -94,6 +95,7 @@ const createAttendance = async (req, res) => {
         $gte: startOfDay,
         $lte: endOfDay,
       },
+      isDeleted: false,
     });
 
     if (existingAttendance) {
@@ -115,7 +117,6 @@ const createAttendance = async (req, res) => {
       notes: notes || "",
     });
 
-    // Populate employee details
     const populatedAttendance =
       await Attendance.findById(attendance._id).populate(
         attendanceEmployeePopulate
@@ -137,11 +138,13 @@ const createAttendance = async (req, res) => {
 };
 
 // ==========================================
-// Get All Attendance
+// Get All Active Attendance
 // ==========================================
 const getAttendance = async (req, res) => {
   try {
-    const attendance = await Attendance.find()
+    const attendance = await Attendance.find({
+      isDeleted: false,
+    })
       .populate(attendanceEmployeePopulate)
       .sort({
         attendanceDate: -1,
@@ -172,6 +175,7 @@ const getEmployeeIdentityCandidates = (employee) => {
 
   if (employee?._id) {
     candidates.add(employee._id);
+
     if (typeof employee._id?.toString === "function") {
       candidates.add(employee._id.toString());
     }
@@ -184,27 +188,44 @@ const getEmployeeIdentityCandidates = (employee) => {
   return Array.from(candidates).filter(Boolean);
 };
 
-const findEmployeeForCurrentUser = async (user, tokenEmployeeId) => {
+const findEmployeeForCurrentUser = async (
+  user,
+  tokenEmployeeId
+) => {
   if (tokenEmployeeId) {
     if (mongoose.Types.ObjectId.isValid(tokenEmployeeId)) {
       const byId = await Employee.findById(tokenEmployeeId);
+
       if (byId) return byId;
     }
 
-    const byCode = await Employee.findOne({ employeeId: tokenEmployeeId });
+    const byCode = await Employee.findOne({
+      employeeId: tokenEmployeeId,
+    });
+
     if (byCode) return byCode;
   }
 
   const email = normalizeEmail(user?.email);
+
   if (email) {
-    const byEmail = await Employee.findOne({ email });
+    const byEmail = await Employee.findOne({
+      email,
+    });
+
     if (byEmail) return byEmail;
   }
 
   if (user?.id) {
-    const profile = await Profile.findOne({ createdBy: user.id });
+    const profile = await Profile.findOne({
+      createdBy: user.id,
+    });
+
     if (profile?.employeeId) {
-      const byProfile = await Employee.findOne({ employeeId: profile.employeeId });
+      const byProfile = await Employee.findOne({
+        employeeId: profile.employeeId,
+      });
+
       if (byProfile) return byProfile;
     }
   }
@@ -213,12 +234,16 @@ const findEmployeeForCurrentUser = async (user, tokenEmployeeId) => {
 };
 
 // ==========================================
-// Get Attendance for current authenticated employee
+// Get Attendance for Current Employee
 // ==========================================
 const getMyAttendance = async (req, res) => {
   try {
     const tokenEmployeeId = req.user?.employeeId;
-    const employee = await findEmployeeForCurrentUser(req.user, tokenEmployeeId);
+
+    const employee = await findEmployeeForCurrentUser(
+      req.user,
+      tokenEmployeeId
+    );
 
     if (!employee) {
       return res.status(404).json({
@@ -231,20 +256,33 @@ const getMyAttendance = async (req, res) => {
 
     if (employee?._id) {
       employeeIdCandidates.push(employee._id);
+
       if (typeof employee._id?.toString === "function") {
-        employeeIdCandidates.push(employee._id.toString());
+        employeeIdCandidates.push(
+          employee._id.toString()
+        );
       }
     }
 
     const attendanceQuery = employeeIdCandidates.length
       ? {
-          $or: employeeIdCandidates.map((candidate) => ({ employeeId: candidate })),
+          $or: employeeIdCandidates.map((candidate) => ({
+            employeeId: candidate,
+          })),
+          isDeleted: false,
         }
-      : { employeeId: employee._id };
+      : {
+          employeeId: employee._id,
+          isDeleted: false,
+        };
 
-    const attendance = await Attendance.find(attendanceQuery)
+    const attendance = await Attendance.find(
+      attendanceQuery
+    )
       .populate(attendanceEmployeePopulate)
-      .sort({ attendanceDate: -1 });
+      .sort({
+        attendanceDate: -1,
+      });
 
     return res.status(200).json({
       success: true,
@@ -252,7 +290,10 @@ const getMyAttendance = async (req, res) => {
       attendance,
     });
   } catch (error) {
-    console.error("Get My Attendance Error:", error);
+    console.error(
+      "Get My Attendance Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -266,9 +307,10 @@ const getMyAttendance = async (req, res) => {
 // ==========================================
 const getAttendanceById = async (req, res) => {
   try {
-    const attendance = await Attendance.findById(
-      req.params.id
-    ).populate(attendanceEmployeePopulate);
+    const attendance = await Attendance.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    }).populate(attendanceEmployeePopulate);
 
     if (!attendance) {
       return res.status(404).json({
@@ -282,7 +324,10 @@ const getAttendanceById = async (req, res) => {
       attendance,
     });
   } catch (error) {
-    console.error("Get Attendance By ID Error:", error);
+    console.error(
+      "Get Attendance By ID Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -306,9 +351,10 @@ const updateAttendance = async (req, res) => {
       notes,
     } = req.body;
 
-    const attendance = await Attendance.findById(
-      req.params.id
-    );
+    const attendance = await Attendance.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!attendance) {
       return res.status(404).json({
@@ -320,9 +366,12 @@ const updateAttendance = async (req, res) => {
     // Validate status if provided
     if (
       status &&
-      !["Present", "Absent", "Leave", "Half Day"].includes(
-        status
-      )
+      ![
+        "Present",
+        "Absent",
+        "Leave",
+        "Half Day",
+      ].includes(status)
     ) {
       return res.status(400).json({
         success: false,
@@ -356,7 +405,7 @@ const updateAttendance = async (req, res) => {
       resolvedEmployeeId = employee._id;
     }
 
-    // Check duplicate attendance when employee/date changes
+    // Check duplicate attendance
     if (employeeId || attendanceDate) {
       const dateToCheck =
         attendanceDate || attendance.attendanceDate;
@@ -376,6 +425,7 @@ const updateAttendance = async (req, res) => {
         _id: {
           $ne: req.params.id,
         },
+        isDeleted: false,
       });
 
       if (duplicate) {
@@ -417,9 +467,10 @@ const updateAttendance = async (req, res) => {
     await attendance.save();
 
     const updatedAttendance =
-      await Attendance.findById(attendance._id).populate(
-        attendanceEmployeePopulate
-      );
+      await Attendance.findOne({
+        _id: attendance._id,
+        isDeleted: false,
+      }).populate(attendanceEmployeePopulate);
 
     return res.status(200).json({
       success: true,
@@ -427,7 +478,10 @@ const updateAttendance = async (req, res) => {
       attendance: updatedAttendance,
     });
   } catch (error) {
-    console.error("Update Attendance Error:", error);
+    console.error(
+      "Update Attendance Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -437,13 +491,16 @@ const updateAttendance = async (req, res) => {
 };
 
 // ==========================================
-// Delete Attendance
+// Soft Delete Attendance
 // ==========================================
 const deleteAttendance = async (req, res) => {
+  console.log("🔥 SOFT DELETE ATTENDANCE CALLED");
+
   try {
-    const attendance = await Attendance.findById(
-      req.params.id
-    );
+    const attendance = await Attendance.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!attendance) {
       return res.status(404).json({
@@ -452,14 +509,27 @@ const deleteAttendance = async (req, res) => {
       });
     }
 
-    await Attendance.findByIdAndDelete(req.params.id);
+    // Soft delete instead of permanently deleting
+    await Attendance.findByIdAndUpdate(
+      req.params.id,
+      {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
+      {
+        new: true,
+      }
+    );
 
     return res.status(200).json({
       success: true,
       message: "Attendance Deleted Successfully",
     });
   } catch (error) {
-    console.error("Delete Attendance Error:", error);
+    console.error(
+      "Delete Attendance Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,

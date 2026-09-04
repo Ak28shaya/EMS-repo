@@ -22,6 +22,7 @@ const createDesignation = async (req, res) => {
     const existingDesignation = await Designation.findOne({
       designationName,
       departmentId,
+      isDeleted: false,
     });
 
     if (existingDesignation) {
@@ -47,11 +48,13 @@ const createDesignation = async (req, res) => {
 };
 
 // ==========================
-// Get All Designations
+// Get All Active Designations
 // ==========================
 const getDesignations = async (req, res) => {
   try {
-    const designations = await Designation.find()
+    const designations = await Designation.find({
+      isDeleted: false,
+    })
       .populate("departmentId", "departmentName")
       .sort({ createdAt: -1 });
 
@@ -72,8 +75,10 @@ const getDesignations = async (req, res) => {
 // ==========================
 const getDesignationById = async (req, res) => {
   try {
-    const designation = await Designation.findById(req.params.id)
-      .populate("departmentId", "departmentName");
+    const designation = await Designation.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    }).populate("departmentId", "departmentName");
 
     if (!designation) {
       return res.status(404).json({
@@ -98,7 +103,10 @@ const updateDesignation = async (req, res) => {
   try {
     const { designationName, departmentId } = req.body;
 
-    const designation = await Designation.findById(req.params.id);
+    const designation = await Designation.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!designation) {
       return res.status(404).json({
@@ -122,6 +130,7 @@ const updateDesignation = async (req, res) => {
       designationName,
       departmentId,
       _id: { $ne: req.params.id },
+      isDeleted: false,
     });
 
     if (existingDesignation) {
@@ -130,8 +139,11 @@ const updateDesignation = async (req, res) => {
       });
     }
 
-    const updatedDesignation = await Designation.findByIdAndUpdate(
-      req.params.id,
+    const updatedDesignation = await Designation.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isDeleted: false,
+      },
       {
         designationName,
         departmentId,
@@ -154,11 +166,16 @@ const updateDesignation = async (req, res) => {
 };
 
 // ==========================
-// Delete Designation
+// Soft Delete Designation
 // ==========================
 const deleteDesignation = async (req, res) => {
+  console.log("🔥 SOFT DELETE DESIGNATION CALLED");
+
   try {
-    const designation = await Designation.findById(req.params.id);
+    const designation = await Designation.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!designation) {
       return res.status(404).json({
@@ -166,7 +183,11 @@ const deleteDesignation = async (req, res) => {
       });
     }
 
-    await Designation.findByIdAndDelete(req.params.id);
+    // Soft delete instead of permanently deleting
+    await Designation.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    });
 
     res.status(200).json({
       message: "Designation Deleted Successfully",

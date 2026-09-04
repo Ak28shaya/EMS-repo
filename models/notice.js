@@ -19,6 +19,17 @@ const noticeSchema = new mongoose.Schema(
       ref: "Employee",
       required: true,
     },
+
+    // Soft Delete Fields
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

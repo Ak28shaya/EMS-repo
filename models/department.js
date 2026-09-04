@@ -31,6 +31,17 @@ const departmentSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    // Soft Delete Fields
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

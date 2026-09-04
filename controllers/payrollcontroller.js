@@ -37,6 +37,8 @@ const createPayroll = async (req, res) => {
       netSalary,
       paymentStatus,
       paymentDate,
+      isDeleted: false,
+      deletedAt: null,
     });
 
     res.status(201).json({
@@ -51,17 +53,19 @@ const createPayroll = async (req, res) => {
 };
 
 // ==============================
-// Get All Payrolls
+// Get All Active Payrolls
 // ==============================
 const getPayrolls = async (req, res) => {
   try {
-    const payrolls = await Payroll.find()
+    const payrolls = await Payroll.find({
+      isDeleted: false,
+    })
       .populate({
         path: "employeeId",
         populate: [
           { path: "departmentId" },
-          { path: "designationId" }
-        ]
+          { path: "designationId" },
+        ],
       })
       .sort({ createdAt: -1 });
 
@@ -83,19 +87,23 @@ const getPayrolls = async (req, res) => {
 const getMyPayrolls = async (req, res) => {
   try {
     const tokenEmployeeId = req.user?.employeeId;
+
     if (!tokenEmployeeId) {
       return res.status(400).json({
         message: "Employee identifier missing in token.",
       });
     }
 
-    const payrolls = await Payroll.find({ employeeId: tokenEmployeeId })
+    const payrolls = await Payroll.find({
+      employeeId: tokenEmployeeId,
+      isDeleted: false,
+    })
       .populate({
         path: "employeeId",
         populate: [
           { path: "departmentId" },
-          { path: "designationId" }
-        ]
+          { path: "designationId" },
+        ],
       })
       .sort({ createdAt: -1 });
 
@@ -116,7 +124,16 @@ const getMyPayrolls = async (req, res) => {
 // ==============================
 const getPayrollById = async (req, res) => {
   try {
-    const payroll = await Payroll.findById(req.params.id).populate("employeeId");
+    const payroll = await Payroll.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    }).populate({
+      path: "employeeId",
+      populate: [
+        { path: "departmentId" },
+        { path: "designationId" },
+      ],
+    });
 
     if (!payroll) {
       return res.status(404).json({
@@ -147,29 +164,68 @@ const updatePayroll = async (req, res) => {
       tax,
     } = req.body;
 
-    if (basicSalary !== undefined) {
-      req.body.netSalary =
-        Number(basicSalary || 0) +
-        Number(allowance || 0) +
-        Number(bonus || 0) -
-        Number(deductions || 0) -
-        Number(tax || 0);
+    // Find only active payroll
+    const existingPayroll = await Payroll.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
+
+    if (!existingPayroll) {
+      return res.status(404).json({
+        message: "Payroll Not Found",
+      });
     }
 
-    const payroll = await Payroll.findByIdAndUpdate(
-      req.params.id,
+    // Recalculate net salary
+    const finalBasicSalary =
+      basicSalary !== undefined
+        ? Number(basicSalary || 0)
+        : Number(existingPayroll.basicSalary || 0);
+
+    const finalAllowance =
+      allowance !== undefined
+        ? Number(allowance || 0)
+        : Number(existingPayroll.allowance || 0);
+
+    const finalBonus =
+      bonus !== undefined
+        ? Number(bonus || 0)
+        : Number(existingPayroll.bonus || 0);
+
+    const finalDeductions =
+      deductions !== undefined
+        ? Number(deductions || 0)
+        : Number(existingPayroll.deductions || 0);
+
+    const finalTax =
+      tax !== undefined
+        ? Number(tax || 0)
+        : Number(existingPayroll.tax || 0);
+
+    req.body.netSalary =
+      finalBasicSalary +
+      finalAllowance +
+      finalBonus -
+      finalDeductions -
+      finalTax;
+
+    const payroll = await Payroll.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isDeleted: false,
+      },
       req.body,
       {
         new: true,
         runValidators: true,
       }
-    ).populate("employeeId");
-
-    if (!payroll) {
-      return res.status(404).json({
-        message: "Payroll Not Found",
-      });
-    }
+    ).populate({
+      path: "employeeId",
+      populate: [
+        { path: "departmentId" },
+        { path: "designationId" },
+      ],
+    });
 
     res.status(200).json({
       message: "Payroll Updated Successfully",
@@ -183,11 +239,16 @@ const updatePayroll = async (req, res) => {
 };
 
 // ==============================
-// Delete Payroll
+// Soft Delete Payroll
 // ==============================
 const deletePayroll = async (req, res) => {
   try {
-    const payroll = await Payroll.findByIdAndDelete(req.params.id);
+    console.log("🔥 SOFT DELETE PAYROLL CALLED");
+
+    const payroll = await Payroll.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
 
     if (!payroll) {
       return res.status(404).json({
@@ -195,16 +256,26 @@ const deletePayroll = async (req, res) => {
       });
     }
 
+    await Payroll.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    });
+
     res.status(200).json({
       message: "Payroll Deleted Successfully",
     });
   } catch (error) {
+    console.error("Soft Delete Payroll Error:", error);
+
     res.status(500).json({
       message: error.message,
     });
   }
 };
 
+// ==============================
+// Export Controllers
+// ==============================
 module.exports = {
   createPayroll,
   getPayrolls,
