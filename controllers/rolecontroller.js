@@ -1,17 +1,10 @@
 const Role = require("../models/role");
 const User = require("../models/user");
+const { normalizePermissions } = require("../utils/rolePermissionUtils");
 
 const normalizeRoleName = (value) => {
   if (value === undefined || value === null) return "";
   return String(value).trim();
-};
-
-const normalizePermissions = (value) => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((permission) => permission !== undefined && permission !== null)
-    .map((permission) => String(permission).trim())
-    .filter(Boolean);
 };
 
 // ==============================
