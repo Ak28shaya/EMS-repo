@@ -1,4 +1,5 @@
 const ROLE_PERMISSIONS = require("../config/rolepermissions");
+const { permissionMatchesModule } = require("../utils/rolePermissionUtils");
 
 const roleMiddleware = (...allowedRoles) => {
     // Normalize roles passed from routes
@@ -51,10 +52,13 @@ const roleMiddleware = (...allowedRoles) => {
             // 5. Check permission-based access
             // ---------------------------------------
             const hasPermission = userPermissions.some((permission) => {
+                const permissionKey = String(permission).trim().toLowerCase();
+                const moduleName = permissionKey.includes(":") ? permissionKey.split(":")[0] : permissionKey;
+
                 const permittedRoles =
                     typeof ROLE_PERMISSIONS.getRolesForPermission === "function"
                         ? ROLE_PERMISSIONS
-                              .getRolesForPermission(permission)
+                              .getRolesForPermission(moduleName)
                               .map((role) =>
                                   String(role).trim().toLowerCase()
                               )
@@ -62,7 +66,7 @@ const roleMiddleware = (...allowedRoles) => {
 
                 return permittedRoles.some((role) =>
                     normalizedAllowedRoles.includes(role)
-                );
+                ) || permissionMatchesModule(permissionKey, moduleName);
             });
 
             if (hasPermission) {

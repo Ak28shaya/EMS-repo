@@ -1,4 +1,4 @@
-const Notification = require("../models/Notification");
+const Notification = require("../models/notification");
 const Employee = require("../models/employee");
 
 // Get notifications for current user (Admin or Employee)

@@ -1,4 +1,4 @@
-const Settings = require("../models/Settings");
+const Settings = require("../models/settings");
 
 // Create Settings
 const createSettings = async (req, res) => {

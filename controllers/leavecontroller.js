@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Leave = require("../models/leave");
 const Employee = require("../models/employee");
 const Profile = require("../models/profile");
+const Notification = require("../models/notification");
 
 // ==========================
 // Resolve Employee for Leave
@@ -123,8 +124,6 @@ const createLeave = async (req, res) => {
 
     // Create notification
     try {
-      const Notification = require("../models/Notification");
-
       await Notification.create({
         recipientType: "Admin",
         title: "New Leave Application",
@@ -246,8 +245,6 @@ const updateLeave = async (req, res) => {
       req.body.status !== leave.status
     ) {
       try {
-        const Notification = require("../models/Notification");
-
         const statusText = req.body.status;
 
         const notifType =

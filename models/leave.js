@@ -66,4 +66,6 @@ deletedAt: {
   }
 );
 
-module.exports = mongoose.model("Leave", leaveSchema, "leave");
+module.exports =
+  mongoose.models.Leave ||
+  mongoose.model("Leave", leaveSchema, "leave");

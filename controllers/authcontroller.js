@@ -5,6 +5,7 @@ const Role = require("../models/role");
 const Profile = require("../models/profile");
 const bcrypt = require("bcrypt");
 const { generateToken } = require("../config/jwt");
+const { normalizePermissions: normalizeStoredPermissions } = require("../utils/rolePermissionUtils");
 
 const SALT_ROUNDS = 10;
 
@@ -109,6 +110,10 @@ const getMe = async (req, res) => {
     if (employeeId) {
       sanitizedUser.employeeId = employeeId;
     }
+    sanitizedUser.permissions = normalizeStoredPermissions([
+      ...(Array.isArray(user.permissions) ? user.permissions : []),
+      ...(Array.isArray(user.role?.permissions) ? user.role.permissions : []),
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -175,6 +180,10 @@ const login = async (req, res) => {
     const sanitizedUser = { ...user.toObject() };
     delete sanitizedUser.password;
     sanitizedUser.role = user.role?.name || sanitizedUser.role;
+    sanitizedUser.permissions = normalizeStoredPermissions([
+      ...(Array.isArray(user.permissions) ? user.permissions : []),
+      ...(Array.isArray(user.role?.permissions) ? user.role.permissions : []),
+    ]);
     if (employeeId) {
       sanitizedUser.employeeId = employeeId;
     }

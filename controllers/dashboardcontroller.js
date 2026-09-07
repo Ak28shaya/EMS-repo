@@ -82,6 +82,8 @@ const getAdminDashboard = async (req, res) => {
   }
 };
 
+const Profile = require("../models/profile");
+
 // ============================
 // Employee Dashboard
 // ============================
@@ -93,9 +95,16 @@ const getEmployeeDashboard = async (req, res) => {
     let employee = null;
 
     if (employeeId && employeeId !== "me") {
-      employee = await Employee.findOne({ employeeId })
-        .populate("departmentId")
-        .populate("designationId");
+      if (mongoose.Types.ObjectId.isValid(employeeId)) {
+        employee = await Employee.findById(employeeId)
+          .populate("departmentId")
+          .populate("designationId");
+      }
+      if (!employee) {
+        employee = await Employee.findOne({ employeeId })
+          .populate("departmentId")
+          .populate("designationId");
+      }
     }
 
     if (!employee && currentUserEmployeeId) {
@@ -112,16 +121,40 @@ const getEmployeeDashboard = async (req, res) => {
       }
     }
 
+    const targetUserId = req.user?.userId || req.user?._id || req.user?.id;
+    if (!employee && targetUserId) {
+      const profile = await Profile.findOne({ createdBy: targetUserId });
+      if (profile?.employeeId) {
+        employee = await Employee.findOne({ employeeId: profile.employeeId })
+          .populate("departmentId")
+          .populate("designationId");
+      }
+    }
+
     if (!employee && req.user?.email) {
       employee = await Employee.findOne({ email: req.user.email })
         .populate("departmentId")
         .populate("designationId");
     }
 
+    const recentNotices = await Notice.find().sort({ createdAt: -1 }).limit(5).lean();
+
     if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: "Employee not found",
+      return res.status(200).json({
+        success: true,
+        message: "No specific employee profile found, returning general dashboard data",
+        dashboard: {
+          employee: null,
+          employeeProfile: {
+            firstName: req.user?.name || "Employee",
+            lastName: "",
+            email: req.user?.email || "",
+            leaveBalance: 0,
+            salary: 0,
+          },
+          todayAttendance: null,
+          recentNotices,
+        },
       });
     }
 
@@ -133,7 +166,7 @@ const getEmployeeDashboard = async (req, res) => {
 
     const Leave = require("../models/leave");
 
-    const [todayAttendance, recentNotices, approvedLeaves] = await Promise.all([
+    const [todayAttendance, approvedLeaves] = await Promise.all([
       Attendance.findOne({
         employeeId: employee._id,
         attendanceDate: {
@@ -141,7 +174,6 @@ const getEmployeeDashboard = async (req, res) => {
           $lt: tomorrow,
         },
       }).lean(),
-      Notice.find().sort({ createdAt: -1 }).limit(5).lean(),
       Leave.find({ employeeId: employee._id, status: "Approved" }).lean(),
     ]);
 

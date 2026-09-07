@@ -38,6 +38,7 @@ const buildEmployeeDashboard = async (employee) => {
   const attendancePercentage = totalWorkingDays > 0 ? ((presentDays / totalWorkingDays) * 100).toFixed(2) : 0;
 
   const approvedLeaveDocs = await Leave.find({ employeeId: employee._id, status: "Approved" });
+  const approvedLeaves = approvedLeaveDocs.length;
   const pendingLeaves = await Leave.countDocuments({ employeeId: employee._id, status: "Pending" });
   const rejectedLeaves = await Leave.countDocuments({ employeeId: employee._id, status: "Rejected" });
 
@@ -114,8 +115,9 @@ const resolveEmployee = async (tokenUser) => {
     if (employeeByCode) return employeeByCode;
   }
 
-  if (tokenUser.userId) {
-    const profile = await Profile.findOne({ createdBy: tokenUser.userId });
+  const targetUserId = tokenUser.userId || tokenUser._id || tokenUser.id;
+  if (targetUserId) {
+    const profile = await Profile.findOne({ createdBy: targetUserId });
     if (profile?.employeeId) {
       const employeeByProfile = await Employee.findOne({ employeeId: profile.employeeId })
         .populate("departmentId")
