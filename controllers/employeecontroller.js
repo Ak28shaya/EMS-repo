@@ -1,4 +1,20 @@
 const Employee = require("../models/employee");
+const Department = require("../models/department");
+
+const refreshDepartmentCount = async (departmentId) => {
+  const normalizedDepartmentId = departmentId?._id || departmentId;
+  if (!normalizedDepartmentId) return;
+
+  const employeeCount = await Employee.countDocuments({
+    departmentId: normalizedDepartmentId,
+    isDeleted: false,
+  });
+
+  await Department.findOneAndUpdate(
+    { _id: normalizedDepartmentId, isDeleted: false },
+    { employeeCount }
+  );
+};
 
 // ==========================
 // Create Employee
@@ -93,6 +109,7 @@ const createEmployee = async (req, res) => {
     }
 
     const employee = await Employee.create(req.body);
+    await refreshDepartmentCount(employee.departmentId);
 
     res.status(201).json({
       message: "Employee Created Successfully",
@@ -221,6 +238,13 @@ const updateEmployee = async (req, res) => {
       .populate("designationId", "designationName")
       .populate("createdBy", "name email");
 
+    const previousDepartmentId = employee.departmentId?._id || employee.departmentId;
+    const updatedDepartmentId = updatedEmployee.departmentId?._id || updatedEmployee.departmentId;
+    await refreshDepartmentCount(previousDepartmentId);
+    if (String(updatedDepartmentId) !== String(previousDepartmentId)) {
+      await refreshDepartmentCount(updatedDepartmentId);
+    }
+
     res.status(200).json({
       message: "Employee Updated Successfully",
       employee: updatedEmployee,
@@ -255,6 +279,7 @@ const deleteEmployee = async (req, res) => {
       isDeleted: true,
       deletedAt: new Date(),
     });
+    await refreshDepartmentCount(employee.departmentId);
 
     res.status(200).json({
       message: "Employee Deleted Successfully",
