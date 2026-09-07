@@ -10,7 +10,6 @@ const createDepartment = async (req, res) => {
       description,
       headName,
       headDesignation,
-      employeeCount,
     } = req.body;
 
     if (
@@ -41,7 +40,7 @@ const createDepartment = async (req, res) => {
       description,
       headName,
       headDesignation,
-      employeeCount,
+      employeeCount: 0,
     });
 
     res.status(201).json({
@@ -62,9 +61,25 @@ const getDepartments = async (req, res) => {
       isDeleted: false,
     }).sort({ createdAt: -1 });
 
+    const departmentsWithCounts = await Promise.all(
+      departments.map(async (department) => {
+        const employeeCount = await Employee.countDocuments({
+          departmentId: department._id,
+          isDeleted: false,
+        });
+
+        if (department.employeeCount !== employeeCount) {
+          department.employeeCount = employeeCount;
+          await department.save();
+        }
+
+        return department;
+      })
+    );
+
     res.status(200).json({
-      count: departments.length,
-      departments,
+      count: departmentsWithCounts.length,
+      departments: departmentsWithCounts,
     });
   } catch (error) {
     res.status(500).json({
@@ -105,7 +120,6 @@ const updateDepartment = async (req, res) => {
       description,
       headName,
       headDesignation,
-      employeeCount,
     } = req.body;
 
     const department = await Department.findOne({
@@ -141,7 +155,6 @@ const updateDepartment = async (req, res) => {
         description,
         headName,
         headDesignation,
-        employeeCount,
       },
       {
         new: true,
